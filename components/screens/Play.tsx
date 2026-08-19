@@ -2,19 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
-import { bestGuess } from "../../lib/engine";
+import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
 import { DIFFICULTY } from "../../lib/types";
 import type { HintKind } from "../../lib/types";
 import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
 import { HintRow } from "../game/HintRow";
+import { Reveal } from "../game/Reveal";
 import { Thermometer } from "../game/Thermometer";
 
 /**
  * S3 — pantalla principal (PRD §6: "todo lo demás existe para llegar a ella
- * o cerrarla"). Reveal aquí es un estado final estático: la coreografía
- * GSAP es Sprint 3.
+ * o cerrarla"). El reveal delega en Reveal.tsx (PRD §7.2, Sprint 3).
  */
 
 function verdictFor(ring: number): string {
@@ -83,43 +83,40 @@ export function Play() {
         )}
       </div>
 
-      <ClueBar clue={round.clue} />
-
-      <ColorCard
-        grid={grid}
-        guesses={round.guesses}
-        disabled={!isPlaying}
-        revealTarget={!isPlaying}
-        onTap={handleTap}
-      />
-
-      <div className="w-full max-w-xs">
-        {isPlaying ? (
-          <Thermometer closeness={lastGuess?.closeness ?? null} />
-        ) : (
-          <div className="text-center">
-            <p className="font-sans text-lg text-text">{verdictFor(best?.ring ?? 99)}</p>
-            <p className="mt-1 font-mono text-3xl font-bold text-signal">{round.score}</p>
-          </div>
-        )}
-      </div>
-
       {isPlaying ? (
-        <HintRow
-          hints={round.hints}
-          maxHints={DIFFICULTY[state.config.difficulty].maxHints}
-          hasGuessed={round.guesses.length > 0}
-          disabled={!isPlaying}
-          onRequestHint={handleHint}
-        />
+        <>
+          <ClueBar clue={round.clue} />
+          <ColorCard
+            grid={grid}
+            guesses={round.guesses}
+            disabled={false}
+            revealTarget={false}
+            onTap={handleTap}
+          />
+          <div className="w-full max-w-xs">
+            <Thermometer closeness={lastGuess?.closeness ?? null} />
+          </div>
+          <HintRow
+            hints={round.hints}
+            maxHints={DIFFICULTY[state.config.difficulty].maxHints}
+            hasGuessed={round.guesses.length > 0}
+            disabled={!isPlaying}
+            onRequestHint={handleHint}
+          />
+        </>
       ) : (
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "NEXT" })}
-          className="w-full max-w-xs rounded-[var(--radius-panel)] bg-signal py-3 font-sans text-sm font-medium text-signal-ink"
-        >
-          Otra ronda
-        </button>
+        <Reveal
+          clue={round.clue}
+          grid={grid}
+          guesses={round.guesses}
+          best={best}
+          status={round.status === "solved" ? "solved" : "failed"}
+          verdict={verdictFor(best?.ring ?? 99)}
+          score={round.score ?? 0}
+          breakdown={scoreBreakdown(round)}
+          actionLabel="Otra ronda"
+          onAction={() => dispatch({ type: "NEXT" })}
+        />
       )}
     </div>
   );
