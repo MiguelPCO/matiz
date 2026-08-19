@@ -55,31 +55,16 @@ export function Reveal({
 
   useGSAP(
     () => {
-      if (prefersReducedMotion()) return;
       const container = containerRef.current;
       if (!container) return;
+      const reduced = prefersReducedMotion();
 
-      const tl = gsap.timeline();
-
-      // 0.0s — atenuar swatches no-objetivo (el CSS ya las deja en 0.35 por
-      // defecto — partimos de opacidad 1 y bajamos, para que el estado sin
-      // JS ya sea el correcto).
-      const nonTarget = container.querySelectorAll<HTMLElement>("[data-row]:not([data-target])");
-      gsap.set(nonTarget, { opacity: 1 });
-      tl.to(nonTarget, { opacity: 0.35, duration: 0.3 }, 0);
-
-      // 0.2s — pulso del objetivo
+      // Línea punteada mejor-tiro → objetivo: la geometría exige medir el DOM
+      // en tiempo de ejecución (no hay CSS estático posible), así que se
+      // posiciona SIEMPRE — incluso con prefers-reduced-motion — y solo se
+      // omite la animación de trazo (scaleX 0→1) cuando hay reduced motion.
       const targetEl = container.querySelector<HTMLElement>("[data-target]");
-      if (targetEl) {
-        tl.fromTo(
-          targetEl,
-          { scale: 1 },
-          { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1, ease: "power1.inOut" },
-          0.2,
-        );
-      }
-
-      // 0.5s — línea punteada mejor-tiro → objetivo (transform-only: ver spec §"Conflicto stroke-dashoffset")
+      let linePlaced = false;
       if (showLine && best && targetEl && lineRef.current) {
         const bestEl = container.querySelector<HTMLElement>(
           `[data-row="${best.row}"][data-col="${best.col}"]`,
@@ -102,12 +87,39 @@ export function Reveal({
             top: y1,
             width: length,
             rotate: angle,
-            scaleX: 0,
+            scaleX: reduced ? 1 : 0,
             opacity: 1,
             transformOrigin: "left center",
           });
-          tl.to(lineRef.current, { scaleX: 1, duration: 0.3, ease: "power2.out" }, 0.5);
+          linePlaced = true;
         }
+      }
+
+      if (reduced) return;
+
+      const tl = gsap.timeline();
+
+      // 0.0s — atenuar swatches no-objetivo (el CSS ya las deja en 0.35 por
+      // defecto — partimos de opacidad 1 y bajamos, para que el estado sin
+      // JS ya sea el correcto).
+      const nonTarget = container.querySelectorAll<HTMLElement>("[data-row]:not([data-target])");
+      gsap.set(nonTarget, { opacity: 1 });
+      tl.to(nonTarget, { opacity: 0.35, duration: 0.3 }, 0);
+
+      // 0.2s — pulso del objetivo
+      if (targetEl) {
+        tl.fromTo(
+          targetEl,
+          { scale: 1 },
+          { scale: 1.06, duration: 0.15, yoyo: true, repeat: 1, ease: "power1.inOut" },
+          0.2,
+        );
+      }
+
+      // 0.5s — trazo de la línea (ya posicionada arriba: transform-only, ver
+      // spec §"Conflicto stroke-dashoffset")
+      if (linePlaced && lineRef.current) {
+        tl.to(lineRef.current, { scaleX: 1, duration: 0.3, ease: "power2.out" }, 0.5);
       }
 
       // 0.8s — cross-fade de la pista (opacity-only: ver spec §"Conflicto filter")
