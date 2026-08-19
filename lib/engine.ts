@@ -33,12 +33,16 @@ function ringPoints(ring: number): number {
   return RING_POINTS[ring] ?? 0;
 }
 
-export function scoreRound(round: Round): number {
+export function scoreBreakdown(round: Round): { base: number; penalty: number; total: number } {
   const best = bestGuess(round);
   const base = best ? ringPoints(best.ring) : 0;
   const penalty =
     round.hints.length * HINT_PENALTY + Math.max(0, round.guesses.length - 1) * EXTRA_GUESS_PENALTY;
-  return Math.max(0, base - penalty);
+  return { base, penalty, total: Math.max(0, base - penalty) };
+}
+
+export function scoreRound(round: Round): number {
+  return scoreBreakdown(round).total;
 }
 
 export function bestGuess(round: Round): Guess | null {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestGuess, initialState, isRoundOver, reducer, scoreRound, winner } from "./engine";
+import { bestGuess, initialState, isRoundOver, reducer, scoreBreakdown, scoreRound, winner } from "./engine";
 import { buildGrid } from "./grid";
 import type { GameState, GridSize } from "./types";
 
@@ -310,5 +310,76 @@ describe("engine.serializable", () => {
     duel = reducer(duel, { type: "UNLOCK_CURTAIN" });
 
     expect(JSON.parse(JSON.stringify(duel))).toEqual(duel);
+  });
+});
+
+describe("engine.invariants — scoreBreakdown", () => {
+  it("ring 0 sin pistas ni tiros extra: base=100, penalty=0, total=100", () => {
+    const round = {
+      id: "r1",
+      guesserId: "p1",
+      setterId: null,
+      clue: { type: "word", word: "cielo", targetHex: "#4a72c9" },
+      gridSpec: { seed: 1, size: 4, difficulty: "facil", targetHex: "#4a72c9" },
+      guesses: [{ row: 0, col: 0, hex: "#4a72c9", ring: 0, closeness: 1 }],
+      hints: [],
+      status: "solved",
+      score: null,
+    } as const;
+    expect(scoreBreakdown(round)).toEqual({ base: 100, penalty: 0, total: 100 });
+  });
+
+  it("ring 0 con 1 pista y 2 tiros extra: base=100, penalty=15+16=31, total=69", () => {
+    const round = {
+      id: "r2",
+      guesserId: "p1",
+      setterId: null,
+      clue: { type: "word", word: "cielo", targetHex: "#4a72c9" },
+      gridSpec: { seed: 1, size: 4, difficulty: "facil", targetHex: "#4a72c9" },
+      guesses: [
+        { row: 1, col: 1, hex: "#000000", ring: 2, closeness: 0.2 },
+        { row: 1, col: 2, hex: "#111111", ring: 1, closeness: 0.5 },
+        { row: 0, col: 0, hex: "#4a72c9", ring: 0, closeness: 1 },
+      ],
+      hints: [{ kind: "light", text: "..." }],
+      status: "solved",
+      score: null,
+    } as const;
+    // base = ringPoints(0) = 100; penalty = 1*15 + (3-1)*8 = 15+16 = 31
+    expect(scoreBreakdown(round)).toEqual({ base: 100, penalty: 31, total: 69 });
+  });
+
+  it("penalty nunca deja total negativo (clamp a 0)", () => {
+    const round = {
+      id: "r3",
+      guesserId: "p1",
+      setterId: null,
+      clue: { type: "word", word: "cielo", targetHex: "#4a72c9" },
+      gridSpec: { seed: 1, size: 4, difficulty: "facil", targetHex: "#4a72c9" },
+      guesses: [{ row: 1, col: 1, hex: "#000000", ring: 3, closeness: 0.1 }],
+      hints: [
+        { kind: "light", text: "..." },
+        { kind: "sat", text: "..." },
+      ],
+      status: "failed",
+      score: null,
+    } as const;
+    // base = ringPoints(3) = 12; penalty = 2*15 + 0 = 30 → total clamped to 0
+    expect(scoreBreakdown(round)).toEqual({ base: 12, penalty: 30, total: 0 });
+  });
+
+  it("scoreRound sigue devolviendo el mismo total que scoreBreakdown", () => {
+    const round = {
+      id: "r4",
+      guesserId: "p1",
+      setterId: null,
+      clue: { type: "word", word: "cielo", targetHex: "#4a72c9" },
+      gridSpec: { seed: 1, size: 4, difficulty: "facil", targetHex: "#4a72c9" },
+      guesses: [{ row: 0, col: 0, hex: "#4a72c9", ring: 0, closeness: 1 }],
+      hints: [],
+      status: "solved",
+      score: null,
+    } as const;
+    expect(scoreRound(round)).toBe(scoreBreakdown(round).total);
   });
 });
