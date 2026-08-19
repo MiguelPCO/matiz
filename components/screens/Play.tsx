@@ -110,7 +110,6 @@ export function Play() {
           grid={grid}
           guesses={round.guesses}
           best={best}
-          status={round.status === "solved" ? "solved" : "failed"}
           verdict={verdictFor(best?.ring ?? 99)}
           score={round.score ?? 0}
           breakdown={scoreBreakdown(round)}

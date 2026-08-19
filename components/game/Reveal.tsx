@@ -12,7 +12,6 @@ interface RevealProps {
   readonly grid: Grid;
   readonly guesses: readonly Guess[];
   readonly best: Guess | null;
-  readonly status: "solved" | "failed";
   readonly verdict: string;
   readonly score: number;
   readonly breakdown: { readonly base: number; readonly penalty: number };
@@ -38,7 +37,6 @@ export function Reveal({
   grid,
   guesses,
   best,
-  status,
   verdict,
   score,
   breakdown,
@@ -136,6 +134,7 @@ export function Reveal({
 
       // 1.1s — score cuenta hacia arriba + háptico
       if (scoreRef.current) {
+        scoreRef.current.textContent = "0";
         const counter = { value: 0 };
         tl.to(
           counter,
@@ -150,7 +149,8 @@ export function Reveal({
           1.1,
         );
       }
-      tl.call(() => vibrate(status === "solved" ? HAPTIC_SUCCESS : HAPTIC_FAIL), [], 1.1);
+      const hitClose = (best?.ring ?? 99) <= 1;
+      tl.call(() => vibrate(hitClose ? HAPTIC_SUCCESS : HAPTIC_FAIL), [], 1.1);
 
       // 1.4s — panel de acciones
       const panel = container.querySelector<HTMLElement>("[data-action-panel]");
