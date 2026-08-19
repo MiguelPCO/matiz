@@ -104,23 +104,25 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 
 ### Tareas
 
-- [ ] `lib/gsap.ts` — registro único de plugins + helper de reduced-motion
-- [ ] Coreografía completa según PRD §7.2 (timeline de 1,6 s)
-- [ ] Atenuación de swatches no acertados al 35 %
-- [ ] Anillo ámbar + pulso de escala en el objetivo
-- [ ] Línea punteada del mejor tiro al objetivo (`stroke-dashoffset`)
-- [ ] Revelado de la foto: `grayscale(1) → (0)` en 900 ms
-- [ ] Contador de score ascendente, ease-out cúbico
-- [ ] Microcopy por resultado (los cuatro veredictos)
-- [ ] Háptica: patrón corto al fallar, triple al acertar
-- [ ] **Rama `prefers-reduced-motion`: estados finales sin animación, sin pérdida de información**
+- [x] `lib/gsap.ts` — registro único de plugins + helper de reduced-motion
+- [x] Coreografía completa según PRD §7.2 (timeline de 1,6 s)
+- [x] Atenuación de swatches no acertados al 35 %
+- [x] Anillo ámbar + pulso de escala en el objetivo
+- [x] Línea punteada del mejor tiro al objetivo — implementada como `<div>` rotado con `transform: scaleX`, no `stroke-dashoffset` (ver nota de conflicto abajo)
+- [x] Revelado de la foto — implementado como cross-fade de `opacity` entre dos `<img>` apiladas, no `filter: grayscale()` animado (ver nota de conflicto abajo)
+- [x] Contador de score ascendente, ease-out cúbico
+- [x] Microcopy por resultado (los cuatro veredictos)
+- [x] Háptica: patrón corto al fallar, triple al acertar — el discriminador usa `best.ring <= 1` (Clavado o A un matiz), no `Round.status`
+- [x] **Rama `prefers-reduced-motion`: estados finales sin animación, sin pérdida de información**
 
 ### Aceptación
 
-- La secuencia respeta el orden: foto primero, score después
-- Con reduced-motion activo no se pierde ni un dato
-- Solo se animan `transform`, `opacity` y `clip-path`
-- Ningún `useEffect` pelado para GSAP; todo con `useGSAP()`
+- [x] La secuencia respeta el orden: foto primero, score después
+- [x] Con reduced-motion activo no se pierde ni un dato
+- [x] Solo se animan `transform`, `opacity` y `clip-path`
+- [x] Ningún `useEffect` pelado para GSAP; todo con `useGSAP()`
+
+**Nota — conflicto §7.2 vs §8.3, resuelto:** §8.3 prohíbe animar `filter`/`stroke-dashoffset` (solo `transform`/`opacity`/`clip-path`, regla "no negociable" de rendimiento), pero la redacción literal de §7.2 describe la foto como `grayscale(1)→(0)` y la línea como algo que evoca SVG. Se tomó §8.3 como autoridad: la foto es un cross-fade de `opacity` entre dos `<img>` apiladas (B/N estática debajo, color encima), y la línea es un `<div>` con `border-top` punteado animado solo con `scaleX`. Mismo resultado visual, cero propiedades no permitidas. Detalle completo en `docs/superpowers/specs/2026-08-19-sprint3-reveal-design.md`.
 
 ---
 
