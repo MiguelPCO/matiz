@@ -1,0 +1,275 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useGame } from "../../hooks/useGame";
+import { extractColor } from "../../lib/extract";
+import { DIFFICULTY } from "../../lib/types";
+import type { Clue, ClueType, Difficulty, GridSize, Hex } from "../../lib/types";
+import { wordToColor } from "../../lib/word-color";
+import type { WordColorResult } from "../../lib/word-color";
+import { Button } from "../ui/Button";
+import { Label } from "../ui/Label";
+import { Segmented } from "../ui/Segmented";
+import { HowToPlay } from "./HowToPlay";
+
+/**
+ * S1 — pista, tamaño, dificultad. PRD §7.1.4: la primera partida se juega
+ * siempre a 4×4/Fácil/Palabra, sin selector — se aprende por éxito. El
+ * selector completo solo aparece a partir de la segunda partida
+ * (state.hasPlayed, que se activa en la primera ronda que llega a reveal).
+ */
+
+type ClueDraft =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; targetHex: Hex; word?: string; imageSrc?: string }
+  | { status: "error"; reason: "network" | "invalid" | "timeout" | "image" };
+
+const SIZE_OPTIONS = ([4, 5, 6, 8] as const).map((v) => ({ value: v, label: `${v}×${v}` }));
+const DIFFICULTY_OPTIONS = (["facil", "medio", "dificil"] as const).map((v) => ({
+  value: v,
+  label: DIFFICULTY[v].label,
+}));
+const CLUE_TYPE_OPTIONS: readonly { value: ClueType; label: string }[] = [
+  { value: "word", label: "Palabra" },
+  { value: "image", label: "Imagen" },
+];
+
+const WORD_ERROR_COPY: Record<"network" | "invalid" | "timeout", string> = {
+  network: "No se pudo contactar con el servicio de color.",
+  timeout: "El servicio tardó demasiado en responder.",
+  invalid: "No se pudo derivar un color de esa palabra.",
+};
+
+const MAX_STORED_IMAGE_EDGE = 640;
+
+function downscaleToDataUrl(img: HTMLImageElement, maxEdge: number): string {
+  const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return img.src;
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+export function Setup() {
+  const { state, dispatch } = useGame();
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
+  const [clueType, setClueType] = useState<ClueType>("word");
+  const [word, setWord] = useState("");
+  const [draft, setDraft] = useState<ClueDraft>({ status: "idle" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showPicker = state.hasPlayed;
+
+  async function revealWordColor(term: string) {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    setDraft({ status: "loading" });
+    const result: WordColorResult = await wordToColor(trimmed);
+    if (!result.ok) {
+      setDraft({ status: "error", reason: result.reason });
+      return;
+    }
+    setDraft({ status: "ready", targetHex: result.hex, word: trimmed });
+  }
+
+  function handleFileChosen(file: File) {
+    setDraft({ status: "loading" });
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== "string") {
+        setDraft({ status: "error", reason: "image" });
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        const targetHex = extractColor(img);
+        const imageSrc = downscaleToDataUrl(img, MAX_STORED_IMAGE_EDGE);
+        setDraft({ status: "ready", targetHex, imageSrc });
+      };
+      img.onerror = () => setDraft({ status: "error", reason: "image" });
+      img.src = dataUrl;
+    };
+    reader.onerror = () => setDraft({ status: "error", reason: "image" });
+    reader.readAsDataURL(file);
+  }
+
+  function handleEmpezar() {
+    if (draft.status !== "ready") return;
+    const clue: Clue = draft.imageSrc
+      ? { type: "image", imageSrc: draft.imageSrc, targetHex: draft.targetHex }
+      : { type: "word", word: draft.word, targetHex: draft.targetHex };
+    dispatch({
+      type: "SUBMIT_CLUE",
+      clue,
+      seed: Math.floor(Math.random() * 2 ** 31),
+    });
+  }
+
+  const isLoading = draft.status === "loading";
+  const isError = draft.status === "error";
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-6 px-4 pt-10 pb-6">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: "GO_HOME" })}
+          aria-label="Volver"
+          className="font-mono text-lg text-text-muted"
+        >
+          ←
+        </button>
+        <button
+          type="button"
+          onClick={() => setHowToPlayOpen(true)}
+          aria-label="Cómo se juega"
+          className="font-mono text-xs text-text-faint"
+        >
+          ?
+        </button>
+      </div>
+
+      {showPicker && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <Label className="mb-1.5 block">Tamaño</Label>
+            <Segmented
+              options={SIZE_OPTIONS}
+              value={state.config.size}
+              onChange={(size: GridSize) => dispatch({ type: "SET_CONFIG", config: { size } })}
+              aria-label="Tamaño de la carta"
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Dificultad</Label>
+            <Segmented
+              options={DIFFICULTY_OPTIONS}
+              value={state.config.difficulty}
+              onChange={(difficulty: Difficulty) =>
+                dispatch({ type: "SET_CONFIG", config: { difficulty } })
+              }
+              aria-label="Dificultad"
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Tipo de pista</Label>
+            <Segmented
+              options={CLUE_TYPE_OPTIONS}
+              value={clueType}
+              onChange={(v: ClueType) => {
+                setClueType(v);
+                setDraft({ status: "idle" });
+              }}
+              aria-label="Tipo de pista"
+            />
+          </div>
+        </div>
+      )}
+
+      {clueType === "word" ? (
+        <div key="word" className="flex flex-col gap-2">
+          <Label className="block">Pista</Label>
+          <input
+            value={word}
+            onChange={(e) => setWord(e.target.value)}
+            placeholder="Palabra (p. ej. óxido)"
+            disabled={isLoading}
+            className="rounded-[var(--radius-panel)] border border-line bg-surface-1 px-3 py-2 font-sans text-sm text-text"
+          />
+          <Button
+            variant="secondary"
+            onClick={() => revealWordColor(word)}
+            disabled={isLoading || word.trim().length === 0}
+          >
+            {isLoading ? "Revelando color…" : "Revelar color"}
+          </Button>
+        </div>
+      ) : (
+        <div key="image" className="flex flex-col gap-2">
+          <Label className="block">Pista</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileChosen(file);
+            }}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            {isLoading ? "Leyendo imagen…" : "Elegir imagen"}
+          </Button>
+        </div>
+      )}
+
+      {isError && draft.status === "error" && (
+        <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] bg-surface-1 p-3">
+          <p className="font-sans text-xs text-text-muted">
+            {draft.reason === "image"
+              ? "No se pudo leer la imagen."
+              : WORD_ERROR_COPY[draft.reason]}
+          </p>
+          <div className="flex gap-2">
+            {draft.reason === "image" ? (
+              <>
+                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                  Elegir otra imagen
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setClueType("word");
+                    setDraft({ status: "idle" });
+                  }}
+                >
+                  Probar con palabra
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="secondary" onClick={() => revealWordColor(word)}>
+                  Reintentar
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setClueType("image");
+                    setDraft({ status: "idle" });
+                  }}
+                >
+                  Probar con una imagen
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {draft.status === "ready" && (
+        <div
+          className="h-16 w-16 rounded-[var(--radius-swatch)]"
+          style={{ backgroundColor: draft.targetHex }}
+          aria-hidden="true"
+        />
+      )}
+
+      <Button variant="primary" onClick={handleEmpezar} disabled={draft.status !== "ready"}>
+        Empezar
+      </Button>
+
+      <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
+    </main>
+  );
+}

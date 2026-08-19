@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MATIZ — Wireframes MVP</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --s0:#14161A; --s1:#1E2024; --s2:#292C31; --line:#383C43;
+  --faint:#666D77; --muted:#98A0AB; --text:#ECEEF1;
+  --signal:#E7A34B;
+  --sans:'General Sans','Inter',system-ui,sans-serif;
+  --mono:'Geist Mono','SFMono-Regular',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0C0D10;color:var(--text);font-family:var(--sans);padding:32px 20px 80px;-webkit-font-smoothing:antialiased}
+
+.head{max-width:1200px;margin:0 auto 40px}
+.kicker{font-family:var(--mono);font-size:10px;letter-spacing:.35em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+h1{font-size:32px;font-weight:600;letter-spacing:-.02em}
+h1 .i{color:var(--signal)}
+.sub{color:var(--muted);font-size:14px;margin-top:8px;max-width:60ch;line-height:1.55}
+
+.grid{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:40px 28px;justify-content:flex-start}
+.slot{width:280px}
+.slot-head{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.slot-id{font-family:var(--mono);font-size:11px;color:var(--signal);font-weight:500}
+.slot-name{font-size:14px;font-weight:500}
+.note{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px;padding-left:10px;border-left:1px solid var(--line)}
+.note b{color:var(--text);font-weight:500}
+
+/* phone frame */
+.phone{width:280px;height:566px;background:var(--s0);border:1px solid var(--line);border-radius:26px;padding:16px 14px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0}
+.back{font-size:15px;color:var(--muted)}
+.wm{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.35em;color:var(--text)}
+.wm .i{color:var(--signal)}
+.help{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+.lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.25em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.panel{background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:12px}
+.mono{font-family:var(--mono)}
+
+.seg{display:grid;gap:6px;margin-bottom:14px}
+.seg.c2{grid-template-columns:1fr 1fr}
+.seg.c3{grid-template-columns:repeat(3,1fr)}
+.seg.c4{grid-template-columns:repeat(4,1fr)}
+.opt{border:1px solid var(--line);border-radius:8px;padding:7px 0;text-align:center;font-size:11.5px;color:var(--muted)}
+.opt.on{border-color:var(--signal);background:rgba(231,163,75,.12);color:var(--text)}
+.opt.mono{font-family:var(--mono);font-size:11px}
+
+.input{background:var(--s2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:12px;color:var(--muted);margin-bottom:14px}
+.input .cursor{color:var(--text)}
+.drop{background:var(--s2);border:1px dashed var(--line);border-radius:8px;padding:18px 0;text-align:center;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+
+.cta{background:var(--signal);color:#1b1205;border-radius:9px;padding:11px 0;text-align:center;font-size:13px;font-weight:600;letter-spacing:.01em}
+.cta.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:500}
+.foot{font-family:var(--mono);font-size:8.5px;color:var(--faint);margin-top:9px;line-height:1.6;text-align:center}
+
+/* clue bar */
+.clue{display:flex;gap:11px;align-items:center;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:9px}
+.thumb{width:46px;height:46px;border-radius:8px;flex-shrink:0;background:linear-gradient(140deg,#5a5a5a,#8f8f8f 45%,#3c3c3c);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7px;color:#d9d9d9;letter-spacing:.1em}
+.thumb.color{background:linear-gradient(140deg,#C98B4B,#E8C79A 45%,#8A5A2E)}
+.wordchip{height:46px;padding:0 13px;background:var(--s2);border-radius:8px;display:flex;align-items:center;font-size:15px;font-weight:500}
+.clue-t{font-family:var(--mono);font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.clue-s{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* card */
+.card-wrap{background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:9px;margin-bottom:9px}
+.card{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;position:relative}
+.sw{aspect-ratio:1;border-radius:3px;position:relative}
+.sw.pick{box-shadow:0 0 0 2px rgba(255,255,255,.9);transform:scale(.86)}
+.sw.tgt{box-shadow:0 0 0 2px var(--signal),0 0 0 4px var(--s2)}
+.sw.dim{opacity:.35}
+.tgtmark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#1b1205}
+.axes{display:flex;justify-content:space-between;font-family:var(--mono);font-size:7.5px;color:var(--faint);margin-top:7px;letter-spacing:.12em}
+.axisY{position:absolute;left:-9px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-family:var(--mono);font-size:7px;color:var(--faint);writing-mode:vertical-rl}
+
+/* thermo */
+.thermo-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.thermo-t{font-size:13px;font-weight:500;color:var(--signal)}
+.track{height:6px;border-radius:99px;background:var(--s2);overflow:hidden}
+.fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--line),var(--signal))}
+.empty-hint{font-size:11.5px;color:var(--faint);line-height:1.5}
+
+.counts{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:11px}
+.counts b{font-family:var(--mono);color:var(--text);font-weight:500}
+
+/* reveal */
+.verdict{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.vsub{font-size:11px;color:var(--muted);margin-top:3px}
+.score{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--signal);line-height:1}
+.smath{font-family:var(--mono);font-size:8.5px;color:var(--faint);text-align:right;margin-top:4px}
+.swatch-real{width:34px;height:34px;border-radius:6px;background:#C98B4B;border:1px solid var(--line)}
+
+/* curtain */
+.curtain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+.ring{width:96px;height:96px;border-radius:50%;border:2px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center}
+.ring::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--signal);clip-path:polygon(50% 50%,50% 0,100% 0,100% 60%)}
+.ring span{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-align:center;line-height:1.4}
+.turn{font-size:22px;font-weight:600}
+.pdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:middle}
+
+/* scoreboard */
+.row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+.pname{font-size:14px;font-weight:500}
+.pmeta{font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:3px;letter-spacing:.06em}
+.ptot{font-family:var(--mono);font-size:22px;font-weight:700}
+.win{color:var(--signal)}
+.crown{font-size:10px;color:var(--signal);font-family:var(--mono);letter-spacing:.18em}
+
+/* home */
+.mode{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:9px;background:var(--s1)}
+.mode.pri{border-color:var(--signal)}
+.mode-t{font-size:16px;font-weight:600}
+.mode-d{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.mode.soon{opacity:.45}
+.badge{font-family:var(--mono);font-size:8px;letter-spacing:.2em;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:2px 5px}
+
+.hero-card{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin:auto 0 20px}
+.hero-card .sw{border-radius:2px}
+
+/* how to play */
+.step{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border:0}
+.snum{font-family:var(--mono);font-size:10px;color:var(--signal);flex-shrink:0;padding-top:2px}
+.stitle{font-size:13px;font-weight:500}
+.sdesc{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:3px}
+
+.flowbox{max-width:1200px;margin:56px auto 0;background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:22px}
+.flowbox h2{font-size:15px;font-weight:600;margin-bottom:14px}
+pre{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.75;overflow-x:auto}
+pre b{color:var(--signal);font-weight:400}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div class="kicker">wireframes · mvp v1</div>
+  <h1>MAT<span class="i">I</span>Z</h1>
+  <p class="sub">Siete pantallas. Rampa neutra para no sesgar la lectura del color, ámbar solo como señal, mono para todo dato medible. Los swatches son ilustrativos: en producción se computan en OKLCH desde el color objetivo.</p>
+</div>
+
+<div class="grid">
+
+  <!-- S0 HOME -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S0</span><span class="slot-name">Home</span></div>
+    <div class="phone">
+      <div class="bar"><span class="wm">MAT<span class="i">I</span>Z</span><span class="help">?</span></div>
+      <div style="margin-bottom:18px">
+        <div class="lbl">lee el color a ciegas</div>
+      </div>
+      <div class="mode pri">
+        <div class="mode-t">Solo</div>
+        <div class="mode-d">Una pista, tres tiros. Afina el ojo.</div>
+      </div>
+      <div class="mode">
+        <div class="mode-t">Duelo</div>
+        <div class="mode-d">Dos jugadores, un móvil. Cada uno pone la pista del otro.</div>
+      </div>
+      <div class="mode soon" style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="mode-t">Diario</div><div class="mode-d">Un matiz para todos, cada día.</div></div>
+        <span class="badge">PRONTO</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:auto">
+        <div class="sw" style="background:#6E4322"></div><div class="sw" style="background:#82512B"></div>
+        <div class="sw" style="background:#976034"></div><div class="sw" style="background:#AC703E"></div>
+        <div class="sw" style="background:#C08149"></div><div class="sw" style="background:#D29457"></div>
+        <div class="sw" style="background:#E0A971"></div><div class="sw" style="background:#EBC095"></div>
+      </div>
+      <div class="foot">tira de calibración decorativa · sin interacción</div>
+    </div>
+    <p class="note"><b>Cero modales.</b> El "?" está disponible, nunca impuesto. <b>Diario</b> se muestra bloqueado a propósito: comunica hoja de ruta y crea expectativa sin costar build.</p>
+  </div>
+
+  <!-- S1 SETUP -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S1</span><span class="slot-name">Setup</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">←</span><span class="wm">MAT<span class="i">I</span>Z</span><span class="help">?</span></div>
+      <div class="panel" style="flex:1">
+        <div class="lbl">pista</div>
+        <div class="seg c2">
+          <div class="opt on">Palabra</div><div class="opt">Imagen</div>
+        </div>
+        <div class="input">helado de vainilla<span class="cursor">|</span></div>
+        <div class="lbl">tamaño de la carta</div>
+        <div class="seg c4">
+          <div class="opt mono">4×4</div><div class="opt mono">5×5</div>
+          <div class="opt mono on">6×6</div><div class="opt mono">8×8</div>
+        </div>
+        <div class="lbl">dificultad</div>
+        <div class="seg c3">
+          <div class="opt">Fácil</div><div class="opt on">Medio</div><div class="opt">Difícil</div>
+        </div>
+        <div style="margin-top:auto"></div>
+        <div class="cta">Empezar</div>
+        <div class="foot">3 intentos · 2 pistas<br>el gris es a propósito: para leer color sin sesgo</div>
+      </div>
+    </div>
+    <p class="note"><b>Primera partida:</b> arranca en 4×4 / Fácil / Palabra. Se aprende por éxito. <b>"Otra ronda"</b> vuelve aquí conservando tamaño y dificultad.</p>
+  </div>
+
+  <!-- S2 CORTINA -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S2</span><span class="slot-name">Cortina — solo Duelo</span></div>
+    <div class="phone">
+      <div class="curtain">
+        <div class="lbl" style="margin:0">transferencia</div>
+        <div class="turn"><span class="pdot" style="background:#98A0AB"></span>Turno de Marta</div>
+        <div style="font-size:11.5px;color:var(--muted);max-width:180px;line-height:1.5">Pasa el móvil. Nadie más debería ver la pantalla.</div>
+        <div class="ring"><span>MANTÉN<br>PULSADO</span></div>
+        <div class="foot" style="margin:0">1,2 s · evita aperturas accidentales</div>
+      </div>
+    </div>
+    <p class="note"><b>Corte a negro seco</b>, sin animación de salida: cero rastro de la carta anterior. La pista <b>no se muestra aquí</b> — solo tras el desbloqueo, ya en S3.</p>
+  </div>
+
+  <!-- S3 JUEGO -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S3</span><span class="slot-name">Juego</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">←</span><span class="wm">MAT<span class="i">I</span>Z</span><span class="help mono">N-6</span></div>
+      <div class="clue">
+        <div class="thumb">B/N</div>
+        <div><div class="clue-t">pista</div><div class="clue-s">¿Qué color domina esta foto?</div></div>
+      </div>
+      <div class="card-wrap">
+        <div class="card">
+          <div class="sw" style="background:#5C3A1E"></div><div class="sw" style="background:#734A28"></div><div class="sw" style="background:#8B5B32"></div><div class="sw" style="background:#A26D3E"></div><div class="sw" style="background:#BA804C"></div><div class="sw" style="background:#D0955E"></div>
+          <div class="sw" style="background:#5E4028"></div><div class="sw" style="background:#755133"></div><div class="sw" style="background:#8C633F"></div><div class="sw pick" style="background:#A3764C"></div><div class="sw" style="background:#BA8A5C"></div><div class="sw" style="background:#D09F6E"></div>
+          <div class="sw" style="background:#5F4531"></div><div class="sw" style="background:#76583D"></div><div class="sw" style="background:#8D6B4A"></div><div class="sw" style="background:#A47E58"></div><div class="sw" style="background:#BB9268"></div><div class="sw" style="background:#D1A77A"></div>
+          <div class="sw" style="background:#604A3A"></div><div class="sw" style="background:#775E47"></div><div class="sw" style="background:#8E7254"></div><div class="sw" style="background:#A58663"></div><div class="sw" style="background:#BC9B74"></div><div class="sw" style="background:#D2B087"></div>
+          <div class="sw" style="background:#614F42"></div><div class="sw" style="background:#786450"></div><div class="sw" style="background:#8F795F"></div><div class="sw" style="background:#A68E6F"></div><div class="sw" style="background:#BDA381"></div><div class="sw" style="background:#D3B894"></div>
+          <div class="sw" style="background:#62544A"></div><div class="sw" style="background:#796A59"></div><div class="sw" style="background:#908069"></div><div class="sw" style="background:#A7967A"></div><div class="sw" style="background:#BEAC8D"></div><div class="sw" style="background:#D4C1A1"></div>
+        </div>
+        <div class="axes"><span>◀ OSCURO</span><span>VIVO ▲ APAGADO ▼</span><span>CLARO ▶</span></div>
+      </div>
+      <div class="panel">
+        <div class="counts"><span>Intentos <b>2</b></span><span>Pistas <b>2</b></span></div>
+        <div class="thermo-row"><span class="thermo-t">Cerca</span><span class="mono" style="font-size:8.5px;color:var(--faint)">tiro 1</span></div>
+        <div class="track"><div class="fill" style="width:72%"></div></div>
+        <div class="seg c3" style="margin:12px 0 0">
+          <div class="opt">Claridad</div><div class="opt">Intensidad</div><div class="opt">Dirección</div>
+        </div>
+        <div class="foot">cada pista −15 · intento extra −8</div>
+      </div>
+    </div>
+    <p class="note"><b>La carta nunca comparte protagonismo.</b> Ejes rotulados siempre (no es tutorial, es instrumento). Antes del primer tiro, el termómetro se sustituye por <i>"Toca el matiz que creas correcto."</i></p>
+  </div>
+
+  <!-- S4 REVEAL -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S4</span><span class="slot-name">Reveal</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">←</span><span class="wm">MAT<span class="i">I</span>Z</span><span class="help mono">N-6</span></div>
+      <div class="clue">
+        <div class="thumb color">COLOR</div>
+        <div><div class="clue-t">pista revelada</div><div class="clue-s">helado de vainilla</div></div>
+      </div>
+      <div class="card-wrap">
+        <div class="card">
+          <div class="sw dim" style="background:#5C3A1E"></div><div class="sw dim" style="background:#734A28"></div><div class="sw dim" style="background:#8B5B32"></div><div class="sw dim" style="background:#A26D3E"></div><div class="sw dim" style="background:#BA804C"></div><div class="sw dim" style="background:#D0955E"></div>
+          <div class="sw dim" style="background:#5E4028"></div><div class="sw dim" style="background:#755133"></div><div class="sw dim" style="background:#8C633F"></div><div class="sw pick" style="background:#A3764C"></div><div class="sw dim" style="background:#BA8A5C"></div><div class="sw dim" style="background:#D09F6E"></div>
+          <div class="sw dim" style="background:#5F4531"></div><div class="sw dim" style="background:#76583D"></div><div class="sw dim" style="background:#8D6B4A"></div><div class="sw dim" style="background:#A47E58"></div><div class="sw tgt" style="background:#BB9268"><span class="tgtmark">◎</span></div><div class="sw dim" style="background:#D1A77A"></div>
+          <div class="sw dim" style="background:#604A3A"></div><div class="sw dim" style="background:#775E47"></div><div class="sw dim" style="background:#8E7254"></div><div class="sw dim" style="background:#A58663"></div><div class="sw dim" style="background:#BC9B74"></div><div class="sw dim" style="background:#D2B087"></div>
+          <div class="sw dim" style="background:#614F42"></div><div class="sw dim" style="background:#786450"></div><div class="sw dim" style="background:#8F795F"></div><div class="sw dim" style="background:#A68E6F"></div><div class="sw dim" style="background:#BDA381"></div><div class="sw dim" style="background:#D3B894"></div>
+          <div class="sw dim" style="background:#62544A"></div><div class="sw dim" style="background:#796A59"></div><div class="sw dim" style="background:#908069"></div><div class="sw dim" style="background:#A7967A"></div><div class="sw dim" style="background:#BEAC8D"></div><div class="sw dim" style="background:#D4C1A1"></div>
+        </div>
+        <div class="foot" style="margin-top:7px">línea punteada del mejor tiro al objetivo</div>
+      </div>
+      <div class="panel" style="border-color:var(--signal)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+          <div><div class="verdict">A un matiz.</div><div class="vsub">Mejor tiro a 1 de distancia</div></div>
+          <div><div class="score">45</div><div class="smath">60 − 15</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div class="swatch-real"></div>
+          <div class="mono" style="font-size:10px;color:var(--muted)">color real <span style="color:var(--text)">#BB9268</span></div>
+        </div>
+        <div class="cta ghost">Otra ronda</div>
+      </div>
+    </div>
+    <p class="note"><b>Orden emocional:</b> veredicto humano → número → auditoría. La foto pasa de B/N a color en 900 ms y es el pico: el score entra <i>después</i>, para no competir.</p>
+  </div>
+
+  <!-- S5 MARCADOR -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S5</span><span class="slot-name">Marcador — solo Duelo</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">←</span><span class="wm">MAT<span class="i">I</span>Z</span><span class="help"></span></div>
+      <div class="lbl">resultado del duelo</div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="row">
+          <div>
+            <div class="pname win"><span class="pdot" style="background:var(--signal)"></span>Marta</div>
+            <div class="pmeta">1 PISTA · 2 TIROS · ΔE 0,012</div>
+          </div>
+          <div style="text-align:right">
+            <div class="ptot win">85</div>
+            <div class="crown">GANA</div>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="pname"><span class="pdot" style="background:#98A0AB"></span>Miguel</div>
+            <div class="pmeta">2 PISTAS · 3 TIROS · ΔE 0,048</div>
+          </div>
+          <div style="text-align:right"><div class="ptot">45</div></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="lbl">las pistas</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">
+          <div class="thumb color" style="width:34px;height:34px">C</div>
+          <div style="font-size:11.5px;color:var(--muted)">Marta adivinó <span style="color:var(--text)">#BB9268</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="thumb color" style="width:34px;height:34px;background:linear-gradient(140deg,#3E6B84,#7FB0C6)">C</div>
+          <div style="font-size:11.5px;color:var(--muted)">Miguel adivinó <span style="color:var(--text)">#4E7F99</span></div>
+        </div>
+      </div>
+      <div style="margin-top:auto">
+        <div class="cta">Revancha</div>
+        <div class="cta ghost" style="margin-top:7px">Home</div>
+        <div class="foot">desempate: puntos › pistas › tiros › ΔE</div>
+      </div>
+    </div>
+    <p class="note"><b>Revancha</b> es el CTA primario: conserva jugadores y ajustes, invierte quién empieza. El desglose de pistas cierra la curiosidad ("¿qué le tocó al otro?").</p>
+  </div>
+
+  <!-- S6 COMO SE JUEGA -->
+  <div class="slot">
+    <div class="slot-head"><span class="slot-id">S6</span><span class="slot-name">Cómo se juega</span></div>
+    <div class="phone">
+      <div class="bar"><span class="back">←</span><span class="wm">MAT<span class="i">I</span>Z</span><span class="help"></span></div>
+      <div class="lbl">cómo se juega</div>
+      <div class="panel" style="flex:1">
+        <div class="step">
+          <span class="snum">01</span>
+          <div><div class="stitle">Recibes una pista</div><div class="sdesc">Una palabra, o una foto vaciada a blanco y negro.</div></div>
+        </div>
+        <div class="step">
+          <span class="snum">02</span>
+          <div><div class="stitle">Lees la carta</div><div class="sdesc">Todas las celdas son el mismo color. Cambian claridad (◀▶) e intensidad (▲▼).</div></div>
+        </div>
+        <div class="step">
+          <span class="snum">03</span>
+          <div><div class="stitle">Tiras y mides</div><div class="sdesc">El termómetro dice cuán cerca estás en color. Nunca hacia dónde.</div></div>
+        </div>
+        <div class="step">
+          <span class="snum">04</span>
+          <div><div class="stitle">Gastas pistas si quieres</div><div class="sdesc">Claridad, intensidad o dirección. Cada una resta puntos.</div></div>
+        </div>
+        <div class="step">
+          <span class="snum">05</span>
+          <div><div class="stitle">Se revela el matiz</div><div class="sdesc">Exacto 100 · a 1 → 60 · a 2 → 30 · a 3 → 12</div></div>
+        </div>
+      </div>
+      <div class="cta ghost" style="margin-top:12px">Entendido</div>
+    </div>
+    <p class="note">Accesible desde S0 y S1, <b>nunca automática</b>. Si un jugador necesita abrirla para entender la carta, es un fallo del diseño de S3, no de esta pantalla.</p>
+  </div>
+
+</div>
+
+<div class="flowbox">
+  <h2>Flujos</h2>
+  <pre><b>SOLO</b>
+S0 ──[Solo]──▶ S1 ──[Empezar]──▶ S3 ⟳ tiro → termómetro → tiro
+                                     │ acierto o 3er tiro
+                                     ▼
+                                    S4 ──[Otra ronda]──▶ S1   (conserva tamaño y dificultad)
+                                       └─[←]───────────▶ S0
+
+<b>DUELO (hotseat)</b>
+S0 ──[Duelo]──▶ S1  J1 define la pista PARA J2
+                     ▼
+                    S2  cortina · "Turno de J2" · mantener pulsado
+                     ▼
+                    S3  juega J2  ──▶  S4  su resultado
+                     ▼
+                    S2  cortina · "Turno de J1"
+                     ▼
+                    S1  J2 define la pista PARA J1 ──▶ S2 ──▶ S3 ──▶ S4
+                     ▼
+                    S5  marcador ──[Revancha]──▶ S1
+                                 └─[Home]─────▶ S0</pre>
+</div>
+
+</body>
+</html>
