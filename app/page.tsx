@@ -1,7 +1,9 @@
 "use client";
 
+import { Curtain } from "../components/screens/Curtain";
 import { Home } from "../components/screens/Home";
 import { Play } from "../components/screens/Play";
+import { Scoreboard } from "../components/screens/Scoreboard";
 import { Setup } from "../components/screens/Setup";
 import { useGame } from "../hooks/useGame";
 
@@ -13,14 +15,16 @@ export default function Page() {
       return <Home />;
     case "setup":
       return <Setup />;
+    case "curtain":
+      return <Curtain />;
     case "playing":
     case "reveal":
       return <Play />;
+    case "scoreboard":
+      return <Scoreboard />;
     default:
-      // Salvaguarda para fases sin pantalla construida todavía (curtain,
-      // scoreboard — ambas Sprint 4). Duelo sigue bloqueado en Sprint 2, así
-      // que no debería alcanzarse, pero mantiene "cero rutas muertas" si algo
-      // deja el estado ahí de todos modos.
+      // Salvaguarda para cualquier fase futura sin pantalla construida —
+      // no debería alcanzarse con las seis fases de SCHEMA §6 ya cubiertas.
       return (
         <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-3 px-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">

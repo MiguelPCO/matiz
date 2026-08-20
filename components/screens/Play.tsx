@@ -113,7 +113,9 @@ export function Play() {
           verdict={verdictFor(best?.ring ?? 99)}
           score={round.score ?? 0}
           breakdown={scoreBreakdown(round)}
-          actionLabel="Otra ronda"
+          actionLabel={
+            state.mode === "solo" ? "Otra ronda" : state.rounds.length >= 2 ? "Ver marcador" : "Continuar"
+          }
           onAction={() => dispatch({ type: "NEXT" })}
         />
       )}
