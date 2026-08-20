@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
 interface HoldToConfirmProps {
@@ -36,16 +37,19 @@ export function HoldToConfirm({
   label,
   onConfirm,
 }: HoldToConfirmProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const tweenRef = useRef<gsap.core.Tween | null>(null);
 
-  function start() {
+  const { contextSafe } = useGSAP(() => {}, { scope: containerRef });
+
+  const start = contextSafe(() => {
     if (tweenRef.current) return;
     const ticks = svgRef.current?.querySelectorAll<SVGLineElement>("[data-tick]");
     if (!ticks || ticks.length === 0) return;
     tweenRef.current = gsap.to(ticks, {
       opacity: 1,
-      duration: durationMs / 1000,
+      duration: durationMs / 1000 / TICK_COUNT,
       ease: "none",
       stagger: durationMs / 1000 / TICK_COUNT,
       onComplete: () => {
@@ -53,18 +57,19 @@ export function HoldToConfirm({
         onConfirm();
       },
     });
-  }
+  });
 
-  function cancel() {
+  const cancel = contextSafe(() => {
     if (!tweenRef.current) return;
     tweenRef.current.kill();
     tweenRef.current = null;
     const ticks = svgRef.current?.querySelectorAll<SVGLineElement>("[data-tick]");
     if (ticks) gsap.set(ticks, { opacity: 0.25 });
-  }
+  });
 
   return (
     <div
+      ref={containerRef}
       role="button"
       tabIndex={0}
       aria-label={label}
@@ -74,6 +79,7 @@ export function HoldToConfirm({
       onPointerCancel={cancel}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
+          if (e.repeat) return;
           e.preventDefault();
           start();
         }
@@ -81,7 +87,7 @@ export function HoldToConfirm({
       onKeyUp={(e) => {
         if (e.key === "Enter" || e.key === " ") cancel();
       }}
-      className="relative flex h-28 w-28 select-none flex-col items-center justify-center gap-1 rounded-full outline-none"
+      className="relative flex h-28 w-28 select-none flex-col items-center justify-center gap-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-2"
     >
       <svg ref={svgRef} viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
         {Array.from({ length: TICK_COUNT }, (_, i) => {
