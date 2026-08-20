@@ -66,6 +66,9 @@ export function Setup() {
 
   const showPicker = state.hasPlayed;
 
+  const rival = state.mode === "duel" ? state.players[1 - state.activeIndex] : null;
+  const pistaLabel = rival ? `Pista para ${rival.name}` : "Pista";
+
   async function revealWordColor(term: string) {
     const trimmed = term.trim();
     if (!trimmed) return;
@@ -175,7 +178,7 @@ export function Setup() {
 
       {clueType === "word" ? (
         <div key="word" className="flex flex-col gap-2">
-          <Label className="block">Pista</Label>
+          <Label className="block">{pistaLabel}</Label>
           <input
             value={word}
             onChange={(e) => setWord(e.target.value)}
@@ -193,7 +196,7 @@ export function Setup() {
         </div>
       ) : (
         <div key="image" className="flex flex-col gap-2">
-          <Label className="block">Pista</Label>
+          <Label className="block">{pistaLabel}</Label>
           <input
             ref={fileInputRef}
             type="file"
