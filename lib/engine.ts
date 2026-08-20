@@ -58,25 +58,43 @@ export function isRoundOver(round: Round): boolean {
   return round.status !== "playing";
 }
 
-/** Desempate del duelo: puntos → pistas → tiros → ΔE del mejor tiro. */
-export function winner(state: GameState): PlayerId | null {
-  if (state.mode !== "duel" || state.rounds.length < 2) return null;
+export type WinnerStage = "score" | "hints" | "guesses" | "closeness" | "tie";
+
+/**
+ * Desempate del duelo: puntos → pistas → tiros → ΔE del mejor tiro. Devuelve
+ * también en qué etapa se decidió — el texto en español vive en la UI
+ * (Scoreboard.tsx), no aquí; el motor solo devuelve datos.
+ */
+export function winnerBreakdown(state: GameState): { winnerId: PlayerId | null; stage: WinnerStage } {
+  if (state.mode !== "duel" || state.rounds.length < 2) return { winnerId: null, stage: "tie" };
   const r1 = state.rounds[0];
   const r2 = state.rounds[1];
-  if (!r1 || !r2 || r1.score === null || r2.score === null) return null;
+  if (!r1 || !r2 || r1.score === null || r2.score === null) return { winnerId: null, stage: "tie" };
 
-  if (r1.score !== r2.score) return r1.score > r2.score ? r1.guesserId : r2.guesserId;
+  if (r1.score !== r2.score) {
+    return { winnerId: r1.score > r2.score ? r1.guesserId : r2.guesserId, stage: "score" };
+  }
   if (r1.hints.length !== r2.hints.length) {
-    return r1.hints.length < r2.hints.length ? r1.guesserId : r2.guesserId;
+    return {
+      winnerId: r1.hints.length < r2.hints.length ? r1.guesserId : r2.guesserId,
+      stage: "hints",
+    };
   }
   if (r1.guesses.length !== r2.guesses.length) {
-    return r1.guesses.length < r2.guesses.length ? r1.guesserId : r2.guesserId;
+    return {
+      winnerId: r1.guesses.length < r2.guesses.length ? r1.guesserId : r2.guesserId,
+      stage: "guesses",
+    };
   }
 
   const c1 = bestGuess(r1)?.closeness ?? -1;
   const c2 = bestGuess(r2)?.closeness ?? -1;
-  if (c1 !== c2) return c1 > c2 ? r1.guesserId : r2.guesserId;
-  return null;
+  if (c1 !== c2) return { winnerId: c1 > c2 ? r1.guesserId : r2.guesserId, stage: "closeness" };
+  return { winnerId: null, stage: "tie" };
+}
+
+export function winner(state: GameState): PlayerId | null {
+  return winnerBreakdown(state).winnerId;
 }
 
 function makePlayer(name: string, accent: Player["accent"]): Player {

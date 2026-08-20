@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { bestGuess, initialState, isRoundOver, reducer, scoreBreakdown, scoreRound, winner } from "./engine";
+import { bestGuess, initialState, isRoundOver, reducer, scoreBreakdown, scoreRound, winner, winnerBreakdown } from "./engine";
 import { buildGrid } from "./grid";
-import type { GameState, GridSize } from "./types";
+import type { GameState, GridSize, Round } from "./types";
 
 // Celda cualquiera de la carta que NO sea el target — para provocar fallos
 // deliberados sin depender de a qué celda cayó el target (seed-dependiente).
@@ -167,11 +167,9 @@ describe("engine.invariants — modo duelo", () => {
     expect(s.phase).toBe("reveal");
 
     // NEXT tras ronda 1: Beto (quien acaba de adivinar) pasa a poner la
-    // pista de la ronda 2 — Ana adivinará. Aún no hay marcador.
-    // NOTA: esta lectura del traspaso de turno (PRD §4.8 / SCHEMA §7) está
-    // SIN CONFIRMAR por Miguel — el diagrama ASCII de PRD §6 parece leerse al
-    // revés (ver project_matiz.md en memoria). No construir sobre esto en
-    // Sprint 4 sin confirmarlo primero.
+    // pista de la ronda 2 — Ana adivinará. Aún no hay marcador. Confirmado
+    // por Miguel en Sprint 4: sin cortina intermedia — el mismo jugador
+    // sigue con el móvil y pasa directo a definir la pista del rival.
     s = reducer(s, { type: "NEXT" });
     expect(s.phase).toBe("setup");
     expect(s.currentRound).toBeNull();
@@ -381,5 +379,107 @@ describe("engine.invariants — scoreBreakdown", () => {
       score: null,
     } as const;
     expect(scoreRound(round)).toBe(scoreBreakdown(round).total);
+  });
+});
+
+describe("engine.invariants — winnerBreakdown", () => {
+  const p1 = "p1";
+  const p2 = "p2";
+
+  function stateWith(rounds: readonly Round[]): GameState {
+    return {
+      mode: "duel",
+      phase: "scoreboard",
+      players: [
+        { id: p1, name: "Ana", accent: "signal" },
+        { id: p2, name: "Beto", accent: "muted" },
+      ],
+      activeIndex: 0,
+      config: { size: 4, difficulty: "facil" },
+      rounds,
+      currentRound: null,
+      hasPlayed: true,
+    };
+  }
+
+  function round(overrides: Partial<Round> & { guesserId: string }): Round {
+    return {
+      id: "r",
+      setterId: null,
+      clue: { type: "word", word: "x", targetHex: "#000000" },
+      gridSpec: { seed: 1, size: 4, difficulty: "facil", targetHex: "#000000" },
+      guesses: [],
+      hints: [],
+      status: "solved",
+      score: 0,
+      ...overrides,
+    };
+  }
+
+  it("decide por puntuación cuando difieren", () => {
+    const s = stateWith([
+      round({ guesserId: p1, score: 100 }),
+      round({ guesserId: p2, score: 60 }),
+    ]);
+    expect(winnerBreakdown(s)).toEqual({ winnerId: p1, stage: "score" });
+  });
+
+  it("empate en puntos, decide por menos pistas", () => {
+    const s = stateWith([
+      round({ guesserId: p1, score: 60, hints: [{ kind: "light", text: "" }] }),
+      round({ guesserId: p2, score: 60, hints: [] }),
+    ]);
+    expect(winnerBreakdown(s)).toEqual({ winnerId: p2, stage: "hints" });
+  });
+
+  it("empate en puntos y pistas, decide por menos tiros", () => {
+    const s = stateWith([
+      round({
+        guesserId: p1,
+        score: 60,
+        guesses: [
+          { row: 0, col: 0, hex: "#000", ring: 2, closeness: 0.3 },
+          { row: 0, col: 1, hex: "#000", ring: 0, closeness: 1 },
+        ],
+      }),
+      round({
+        guesserId: p2,
+        score: 60,
+        guesses: [{ row: 0, col: 0, hex: "#000", ring: 0, closeness: 1 }],
+      }),
+    ]);
+    expect(winnerBreakdown(s)).toEqual({ winnerId: p2, stage: "guesses" });
+  });
+
+  it("empate en puntos/pistas/tiros, decide por closeness del mejor tiro", () => {
+    const s = stateWith([
+      round({
+        guesserId: p1,
+        score: 60,
+        guesses: [{ row: 0, col: 0, hex: "#000", ring: 1, closeness: 0.7 }],
+      }),
+      round({
+        guesserId: p2,
+        score: 60,
+        guesses: [{ row: 0, col: 0, hex: "#000", ring: 1, closeness: 0.9 }],
+      }),
+    ]);
+    expect(winnerBreakdown(s)).toEqual({ winnerId: p2, stage: "closeness" });
+  });
+
+  it("empate total en las cuatro etapas → tie, sin ganador", () => {
+    const s = stateWith([
+      round({
+        guesserId: p1,
+        score: 60,
+        guesses: [{ row: 0, col: 0, hex: "#000", ring: 1, closeness: 0.7 }],
+      }),
+      round({
+        guesserId: p2,
+        score: 60,
+        guesses: [{ row: 1, col: 1, hex: "#111", ring: 1, closeness: 0.7 }],
+      }),
+    ]);
+    expect(winnerBreakdown(s)).toEqual({ winnerId: null, stage: "tie" });
   });
 });
