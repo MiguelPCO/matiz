@@ -87,6 +87,7 @@ export function HoldToConfirm({
       onKeyUp={(e) => {
         if (e.key === "Enter" || e.key === " ") cancel();
       }}
+      onBlur={cancel}
       className="relative flex h-28 w-28 select-none flex-col items-center justify-center gap-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-2"
     >
       <svg ref={svgRef} viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
