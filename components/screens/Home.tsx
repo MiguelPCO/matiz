@@ -62,6 +62,7 @@ export function Home() {
           <div>
             <Label className="mb-1.5 block">Jugador 1</Label>
             <input
+              aria-label="Jugador 1"
               value={nameA}
               onChange={(e) => setNameA(e.target.value)}
               placeholder="J1"
@@ -71,6 +72,7 @@ export function Home() {
           <div>
             <Label className="mb-1.5 block">Jugador 2</Label>
             <input
+              aria-label="Jugador 2"
               value={nameB}
               onChange={(e) => setNameB(e.target.value)}
               placeholder="J2"
