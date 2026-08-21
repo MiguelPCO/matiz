@@ -43,7 +43,8 @@ export function HoldToConfirm({
 
   const { contextSafe } = useGSAP(() => {}, { scope: containerRef });
 
-  const start = contextSafe(() => {
+  const start = contextSafe((e?: React.PointerEvent) => {
+    if (e && (!e.isPrimary || e.button !== 0)) return;
     if (tweenRef.current) return;
     const ticks = svgRef.current?.querySelectorAll<SVGLineElement>("[data-tick]");
     if (!ticks || ticks.length === 0) return;
@@ -79,8 +80,8 @@ export function HoldToConfirm({
       onPointerCancel={cancel}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          if (e.repeat) return;
           e.preventDefault();
+          if (e.repeat) return;
           start();
         }
       }}

@@ -64,7 +64,7 @@ export function Setup() {
   const [draft, setDraft] = useState<ClueDraft>({ status: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showPicker = state.hasPlayed;
+  const showPicker = state.hasPlayed && !(state.mode === "duel" && state.rounds.length > 0);
 
   const rival = state.mode === "duel" ? state.players[1 - state.activeIndex] : null;
   const pistaLabel = rival ? `Pista para ${rival.name}` : "Pista";
