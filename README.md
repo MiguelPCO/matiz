@@ -2,6 +2,8 @@
 
 **Lee el color a ciegas.**
 
+🔗 [matiz-eight.vercel.app](https://matiz-eight.vercel.app)
+
 MATIZ es un juego de percepción del color: recibes una pista (una palabra o una foto), y tienes que localizar el matiz exacto que evoca dentro de una carta N×N en espacio OKLCH — sin ver el color de referencia en ningún momento. Cada tiro te acerca o te aleja; un termómetro te dice qué tan cerca estás, nunca en qué dirección. Juega en solitario contra tu propia precisión, o en modo Duelo hotseat pasando el móvil entre dos personas.
 
 ## Cómo se juega
@@ -85,8 +87,21 @@ Desarrollo por sprints — ver [`MATIZ-SPRINTS.md`](./MATIZ-SPRINTS.md) para el 
 - [x] **Sprint 1** — Bucle jugable en solitario, motor de juego
 - [x] **Sprint 2** — Pantallas y navegación completas (Home, Setup, Cómo se juega)
 - [x] **Sprint 3** — Coreografía de reveal con GSAP
-- [ ] **Sprint 4** — Duelo hotseat
+- [x] **Sprint 4** — Duelo hotseat
 - [ ] **Sprint 5** — Accesibilidad, rendimiento y pulido de lanzamiento
+
+## Rendimiento
+
+Auditado con Lighthouse (mobile) contra producción:
+
+| Categoría | Score |
+|---|---|
+| Performance | 99 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
+
+LCP 1.7s · CLS 0 · TBT 70ms · TTI 2.8s — sobre el presupuesto de Sprint 5 (LCP < 2.5s, CLS < 0.1) sin necesidad de optimización adicional en la Home. El score de accesibilidad es automatizado (Lighthouse no puede verificar recorrido por teclado completo ni el contenido del disclaimer de daltonismo — eso sigue siendo trabajo manual de Sprint 5).
 
 ## Documentación del proyecto
 
