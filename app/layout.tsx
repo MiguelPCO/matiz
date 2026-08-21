@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GameProvider } from "../hooks/useGame";
 import { generalSans, geistMono } from "./fonts";
 import "./globals.css";
@@ -8,8 +10,8 @@ const DESCRIPTION =
   "Juego de percepción cromática. Recibes una pista y encuentras su color exacto en una carta de tonalidades.";
 
 export const metadata: Metadata = {
-  // Placeholder — Sprint 5 compra el dominio real y lo sustituye aquí.
-  metadataBase: new URL("https://matiz.example"),
+  // Sin dominio propio (Sprint 5, decisión de Miguel) — el dominio de Vercel es el real y definitivo.
+  metadataBase: new URL("https://matiz-eight.vercel.app"),
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {
@@ -34,6 +36,8 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${generalSans.variable} ${geistMono.variable} antialiased`}>
         <GameProvider>{children}</GameProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
