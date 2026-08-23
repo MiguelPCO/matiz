@@ -65,6 +65,12 @@ export interface GridLattice {
   readonly H: number;
   readonly lStep: number;
   readonly cStep: number;
+  /** Desplazamiento uniforme de croma aplicado a toda la carta por encaje de
+   * gamut (ver nota junto a su cálculo, más abajo). Expuesto solo para
+   * tests: cuanto mayor su magnitud, más se aleja la carta del croma real
+   * del objetivo — que nunca se desplaza — y más se delata éste por
+   * contraste frente al resto de su fila. */
+  readonly shiftC: number;
   readonly target: { readonly row: number; readonly col: number };
   readonly cells: readonly (readonly GridLatticeCell[])[];
 }
@@ -78,40 +84,70 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   const { L: L0, C: C0, H } = hexToOklch(targetHex);
   const cfg = DIFFICULTY[difficulty];
 
-  const lStep = Math.max(cfg.spreadL / (size - 1), MIN_STEP_L);
-
-  const minRawL = L0 - tc * lStep;
-  const maxRawL = L0 + (size - 1 - tc) * lStep;
-  const shiftL = fitShift(minRawL, maxRawL, L_MIN, L_MAX);
-
-  const lAtCol0 = L0 + (0 - tc) * lStep + shiftL;
-  const lAtColLast = L0 + (size - 1 - tc) * lStep + shiftL;
-
-  // El eje L nunca choca con el gamut (croma 0 cabe en cualquier L), pero el
-  // eje C sí: cerca de blanco o negro el gamut sRGB apenas admite croma.
-  // MIN_STEP_C es un paso NOMINAL, no una constante dura (ver types.ts): se
-  // usa como objetivo, pero se reduce por carta al hueco de gamut real
-  // disponible en las dos columnas más extremas cuando no cabe entero — sin
-  // bajar nunca de ABSOLUTE_MIN_STEP_C. Por debajo de eso (target
-  // prácticamente acromático) no hay ajuste que lo resuelva; la salvaguarda
-  // por celda de oklchToHex (toInGamutOklab) absorbe lo que aún no quepa.
+  // El eje L nunca choca con el gamut en sí mismo (croma 0 cabe en cualquier
+  // L), pero el HUECO DE CROMA que el gamut deja en las columnas extremas sí
+  // depende de cuánto se alejen esas columnas de L0 — y por tanto, de
+  // lStep. Antes lStep se fijaba solo por dificultad/tamaño, ciego a C0; si
+  // C0 era medianamente saturado, las columnas extremas caían donde el
+  // gamut apenas admite croma y todo el ajuste recaía en shiftC (ver más
+  // abajo), que arrastra TODA la carta hacia lo apagado mientras la celda
+  // objetivo sigue mostrando su hex exacto sin desplazar — se delataba por
+  // contraste frente al resto de su fila (ver MATIZ-SPRINTS.md § Deuda
+  // técnica conocida).
   //
-  // DEUDA CONOCIDA (sin resolver, ver MATIZ-SPRINTS.md § Deuda técnica
-  // conocida): cuando C0 (croma del target) supera el gamut disponible en
-  // las columnas extremas, shiftC arrastra TODA la fila del objetivo lejos
-  // de C0 — pero la celda objetivo sigue mostrando su hex exacto sin
-  // desplazar (más abajo, en buildGrid), así que se delata por contraste
-  // frente al resto de su fila. Ya se intentó fijar la fila del objetivo sin
-  // ese shift; empeora mucho más (colisiones entre filas vecinas se
-  // disparan de 110/2400 a >3000/2400) porque haría falta que el eje L
-  // también respetara el gamut, no solo el paso de C — cambio de fondo, no
-  // un ajuste local.
-  const gamutCeiling = Math.min(
-    maxInGamutChroma(lAtCol0, H, C_MAX),
-    maxInGamutChroma(lAtColLast, H, C_MAX),
-  );
-  const availableRange = Math.max(0, gamutCeiling - C_MIN);
+  // Fix: encoger lStep (nunca bajo MIN_STEP_L) hasta que las columnas
+  // extremas, más cerca de L0, dejen hueco de gamut suficiente. El objetivo
+  // no es solo C0 — es lo que la fila del objetivo necesita en su extremo
+  // más vivo (row=0): C0 + tr*desiredCStep, con desiredCStep calculado
+  // ANTES de saber cuánto gamut habrá (es el paso que se querría tener sin
+  // restricción). Ese hueco existe siempre en L0 mismo (targetHex es
+  // válido), así que basta con acercarse lo suficiente.
+  const nominalLStep = Math.max(cfg.spreadL / (size - 1), MIN_STEP_L);
   const desiredCStep = Math.max(cfg.spreadC / (size - 1), MIN_STEP_C);
+  const desiredMaxRawC = C0 + tr * desiredCStep;
+
+  function lBoundsFor(lStep: number) {
+    const minRawL = L0 - tc * lStep;
+    const maxRawL = L0 + (size - 1 - tc) * lStep;
+    const shiftL = fitShift(minRawL, maxRawL, L_MIN, L_MAX);
+    const lAtCol0 = L0 + (0 - tc) * lStep + shiftL;
+    const lAtColLast = L0 + (size - 1 - tc) * lStep + shiftL;
+    const gamutCeiling = Math.min(
+      maxInGamutChroma(lAtCol0, H, C_MAX),
+      maxInGamutChroma(lAtColLast, H, C_MAX),
+    );
+    return { shiftL, lAtCol0, lAtColLast, gamutCeiling };
+  }
+
+  let lStep = nominalLStep;
+  let lBounds = lBoundsFor(lStep);
+
+  if (lBounds.gamutCeiling < desiredMaxRawC) {
+    let lo = MIN_STEP_L;
+    let loBounds = lBoundsFor(lo);
+    if (loBounds.gamutCeiling >= desiredMaxRawC) {
+      let hi = lStep;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        const midBounds = lBoundsFor(mid);
+        if (midBounds.gamutCeiling >= desiredMaxRawC) {
+          lo = mid;
+          loBounds = midBounds;
+        } else {
+          hi = mid;
+        }
+      }
+    }
+    // Si ni MIN_STEP_L basta (target ya casi en el borde del gamut, o
+    // demasiadas filas de margen hasta row=0), queda el mejor esfuerzo — el
+    // residuo restante lo absorbe shiftC/cStep como antes, ahora partiendo
+    // de un hueco de gamut mayor.
+    lStep = lo;
+    lBounds = loBounds;
+  }
+
+  const { shiftL, gamutCeiling } = lBounds;
+  const availableRange = Math.max(0, gamutCeiling - C_MIN);
   const affordableCStep = availableRange / (size - 1);
   const cStep = Math.max(ABSOLUTE_MIN_STEP_C, Math.min(desiredCStep, affordableCStep));
 
@@ -135,7 +171,7 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
     cells.push(line);
   }
 
-  return { size, H, lStep, cStep, target: { row: tr, col: tc }, cells };
+  return { size, H, lStep, cStep, shiftC, target: { row: tr, col: tc }, cells };
 }
 
 export function buildGrid(spec: GridSpec): Grid {

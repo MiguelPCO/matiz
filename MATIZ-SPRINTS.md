@@ -210,13 +210,19 @@ S0 Fundación
 
 ## Deuda técnica conocida
 
-**`lib/grid.ts` — el objetivo puede delatarse por contraste de croma en targets saturados (sin resolver).**
+**`lib/grid.ts` — el objetivo puede delatarse por contraste de croma en targets saturados (mejorado en un caso, sin resolver en el otro).**
 
 Detectado probando S3 en navegador (Sprint 1, 2026-08-19) con `#e7a34b` en facil/4×4 y dificil/8×8 — no es un caso límite, se reproduce en ambos. Cuando el croma del target (`C0`) ya supera lo que el gamut sRGB admite en las columnas de luminosidad más extremas de la carta (habitual para cualquier color medianamente saturado, ya que `spreadL` empuja alguna columna cerca de blanco o negro), la fila del objetivo entera se desplaza (`shiftC`) para caber en gamut — pero la celda objetivo siempre muestra su hex exacto sin desplazar (regla de SCHEMA §4.3), así que queda muy por encima del resto de su fila. Resultado: la carta se ve casi monocroma salvo una celda evidente.
 
 Se intentó fijar la fila del objetivo en `C0` (sin `shiftC` por gamut) — **empeora mucho**: sin el desplazamiento previo, muchas filas cercanas al extremo vívido superan el gamut individualmente y la salvaguarda por celda (`toInGamutOklab` en `oklchToHex`) las recorta *a cada una por su cuenta*, colapsando varias filas distintas al mismo croma límite. Violaciones de decidibilidad medidas: 110/2400 (línea base) → 3492/2400 (fix ingenuo) → 3145/2400 (fix con paso asimétrico por headroom real desde `tr`). Revertido a la línea base.
 
-**Hipótesis para el fix real:** el eje L se trata como "nunca choca con el gamut" (`lib/grid.ts`, comentario junto a `lStep`) — cierto solo si `C ≈ 0`. Para un target saturado, habría que limitar cuánto puede alejarse `lStep`/las columnas extremas de `L0` en función de `C0`, no solo ajustar el paso de croma después. Toca el eje L, que hasta ahora se consideraba exento — cambio de fondo, no un ajuste local. Decisión: diferir, no bloquear Sprint 1 más tiempo.
+**Fix aplicado (pre-Sprint-6, 2026-08-23), resultado real medido — no el titular optimista inicial:** la hipótesis de tocar el eje L se implementó — `lStep` ya no se fija solo por dificultad/tamaño; se encoge hacia `MIN_STEP_L` cuando `C0` lo pide, acercando las columnas extremas a `L0` antes de recurrir a `shiftC`. Medido específicamente sobre los dos casos que este debt note reporta (`#e7a34b`, 30 seeds cada uno):
+- **facil/4×4: mejora real** — mean `|shiftC|` 0.1057 → 0.0674 (~36%)
+- **dificil/8×8: sin cambio** — mean `|shiftC|` 0.0885 → 0.0885, idéntico. Cada seed en esa combinación ya estaba limitado por gamut en `L0` mismo (el mejor caso posible), donde `lStep` no tiene nada que ajustar.
+
+Renderizando facil/4×4 seed 4 (el peor de la muestra) tras el fix, el objetivo **sigue** visualmente evidente contra una fila de neutros apagados — el bug reportado no está cerrado, solo parcialmente mitigado en un subconjunto de casos. Se mantiene igualmente porque es más correcto matemáticamente y no regresa nada (suite completa en verde). Tests que clavan estos dos números exactos en `lib/grid.test.ts` (`grid.gamutFit`), para que una regresión futura se note de inmediato.
+
+**Residuo que sigue sin cerrar (estructural, no un bug):** cuando el hueco de gamut en `L0` mismo ya es menor que lo que la fila del objetivo pide en su extremo más vivo (`C0 + tr·cStep` nominal), ningún ajuste de `lStep` alcanza. Cerrarlo del todo exigiría encoger `spreadC` por dificultad para targets saturados — decisión de balance de juego que reabre la tabla `DIFFICULTY` (PRD cerrado), fuera de alcance de un fix de gamut puntual. Diferido, requiere su propio brainstorm si se decide perseguir.
 
 ---
 

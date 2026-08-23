@@ -111,6 +111,54 @@ describe("grid.minStep", () => {
 // número que se ajusta hasta que el sample de turno pasa.
 const MAX_ACCEPTABLE_VIOLATIONS = 130;
 
+// Parcialmente mejorado (ver MATIZ-SPRINTS.md § Deuda técnica conocida) —
+// PERO NO RESUELTO para el caso insignia del debt note. Antes, lStep se
+// fijaba solo por dificultad/tamaño, ciego a C0 — así que shiftC (que
+// arrastra TODA la carta hacia lo apagado mientras la celda objetivo
+// mantiene su hex exacto sin desplazar) tenía que absorber cualquier choque
+// con el gamut en las columnas extremas, por pequeño que fuera. lStep ahora
+// se encoge hacia MIN_STEP_L cuando C0 lo pide.
+//
+// Medido específicamente sobre los dos casos que el debt note reporta
+// ("#e7a34b", 30 seeds cada uno):
+// - facil/4×4: mean|shiftC| 0.1057 → 0.0674 (mejora real, ~36%)
+// - dificil/8×8: mean|shiftC| 0.0885 → 0.0885 — SIN CAMBIO, cada seed sigue
+//   limitado por gamut ya en L0 (mejor caso posible, lStep→0)
+// Renderizando facil/4×4 seed 4 (el peor de la muestra) tras el fix, el
+// objetivo sigue visualmente evidente contra su fila:
+// "#a9a34e #e1a65d #f0b46b #ffc279 / ... / #a9a49e [#e7a34b] #c5c0ba #d4cec8"
+// — el bug reportado ("carta casi monocroma salvo una celda evidente")
+// sigue reproduciéndose. Este fix es más correcto matemáticamente y no
+// regresa nada, pero cerrar el residuo exigiría encoger spreadC para
+// targets saturados — decisión de balance de dificultad, fuera de alcance
+// aquí (ver Nota de método: las decisiones de PRD/DIFFICULTY no se reabren
+// a mitad de un fix puntual).
+//
+// Estos dos números están clavados para que una regresión futura en
+// lBoundsFor/buildGridLattice se note de inmediato, no solo "el agregado
+// empeoró un poco".
+describe("grid.gamutFit", () => {
+  it("facil/4x4 con #e7a34b: mean|shiftC| se mantiene mejorado (~0.067, antes ~0.106)", () => {
+    let sum = 0;
+    const N = 30;
+    for (let seed = 0; seed < N; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 4, difficulty: "facil", targetHex: "#e7a34b" });
+      sum += Math.abs(shiftC);
+    }
+    expect(sum / N).toBeLessThanOrEqual(0.075);
+  });
+
+  it("dificil/8x8 con #e7a34b: mean|shiftC| documentado como sin cambio (~0.089) — residuo estructural, no regresión si se mantiene", () => {
+    let sum = 0;
+    const N = 30;
+    for (let seed = 0; seed < N; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "dificil", targetHex: "#e7a34b" });
+      sum += Math.abs(shiftC);
+    }
+    expect(sum / N).toBeLessThanOrEqual(0.095);
+  });
+});
+
 describe("grid.decidable", () => {
   it("las celdas vecinas son distinguibles, salvo un residuo acotado (ver nota ABSOLUTE_MIN_STEP_C)", () => {
     let violationCount = 0;
