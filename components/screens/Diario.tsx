@@ -63,7 +63,11 @@ export function Diario() {
       score: round.score ?? 0,
     });
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      await navigator.share({ text });
+      try {
+        await navigator.share({ text });
+      } catch {
+        // usuario canceló el share nativo, o el navegador lo rechazó — no es un error de la app
+      }
       return;
     }
     if (typeof navigator !== "undefined" && navigator.clipboard) {
