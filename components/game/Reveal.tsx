@@ -8,7 +8,7 @@ import type { Clue, Grid, Guess } from "../../lib/types";
 import { ColorCard } from "./ColorCard";
 
 interface RevealProps {
-  readonly clue: Clue;
+  readonly clue?: Clue;
   readonly grid: Grid;
   readonly guesses: readonly Guess[];
   readonly best: Guess | null;
@@ -121,13 +121,14 @@ export function Reveal({
       }
 
       // 0.8s — cross-fade de la pista (opacity-only: ver spec §"Conflicto filter")
-      if (clue.type === "image") {
+      // clue undefined (Diario, sin pista) salta este paso por completo.
+      if (clue?.type === "image") {
         const colorImg = container.querySelector<HTMLElement>("[data-clue-color]");
         if (colorImg) {
           gsap.set(colorImg, { opacity: 0 });
           tl.to(colorImg, { opacity: 1, duration: 0.9, ease: "none" }, 0.8);
         }
-      } else if (wordSwatchRef.current) {
+      } else if (clue && wordSwatchRef.current) {
         gsap.set(wordSwatchRef.current, { scale: 0 });
         tl.to(wordSwatchRef.current, { scale: 1, duration: 0.4, ease: "back.out(1.7)" }, 0.8);
       }
@@ -164,7 +165,7 @@ export function Reveal({
 
   return (
     <div ref={containerRef} className="relative flex w-full max-w-xs flex-col items-center gap-6">
-      {clue.type === "word" ? (
+      {clue && (clue.type === "word" ? (
         <div className="flex w-full items-center gap-3 rounded-[var(--radius-panel)] bg-surface-1 p-3">
           <div className="flex-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
@@ -201,7 +202,7 @@ export function Reveal({
             />
           </div>
         </div>
-      )}
+      ))}
 
       <ColorCard grid={grid} guesses={guesses} disabled revealTarget onTap={() => {}} />
 
