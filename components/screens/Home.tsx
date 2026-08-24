@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
 import { oklchToHex } from "../../lib/color";
@@ -94,9 +95,12 @@ export function Home() {
           <Button variant="secondary" onClick={() => setCollectingNames(true)}>
             Duelo
           </Button>
-          <Button variant="secondary" disabled aria-disabled="true">
-            Diario · Próximamente
-          </Button>
+          <Link
+            href="/diario"
+            className="rounded-[var(--radius-panel)] border border-line py-3 text-center font-sans text-sm font-medium text-text"
+          >
+            Diario
+          </Link>
         </div>
       )}
 
