@@ -206,6 +206,7 @@ S0 Fundación
           └─▶ S2 Pantallas ──▶ S3 Reveal
                                  └─▶ S4 Duelo
                                         └─▶ S5 Pulido
+                                               └─▶ S6 Diario
 ```
 
 **Puntos de parada válidos** — si hay que cortar por tiempo, estos son los cortes limpios:
@@ -222,11 +223,10 @@ S0 Fundación
 
 ## Post-MVP, por prioridad
 
-1. **Modo Diario** — un matiz compartido al día + tarjeta de resultado. La única palanca real de alcance
-2. k-means para extracción de color de imagen
-3. Diccionario local de palabras cacheadas — reduce la dependencia de red
-4. Multijugador online (Supabase Realtime) — la arquitectura ya lo contempla
-5. Tema claro «mesa de luz»
+1. k-means para extracción de color de imagen
+2. Diccionario local de palabras cacheadas — reduce la dependencia de red
+3. Multijugador online (Supabase Realtime) — la arquitectura ya lo contempla
+4. Tema claro «mesa de luz»
 
 ---
 
@@ -245,6 +245,8 @@ Se intentó fijar la fila del objetivo en `C0` (sin `shiftC` por gamut) — **em
 Renderizando facil/4×4 seed 4 (el peor de la muestra) tras el fix, el objetivo **sigue** visualmente evidente contra una fila de neutros apagados — el bug reportado no está cerrado, solo parcialmente mitigado en un subconjunto de casos. Se mantiene igualmente porque es más correcto matemáticamente y no regresa nada (suite completa en verde). Tests que clavan estos dos números exactos en `lib/grid.test.ts` (`grid.gamutFit`), para que una regresión futura se note de inmediato.
 
 **Residuo que sigue sin cerrar (estructural, no un bug):** cuando el hueco de gamut en `L0` mismo ya es menor que lo que la fila del objetivo pide en su extremo más vivo (`C0 + tr·cStep` nominal), ningún ajuste de `lStep` alcanza. Cerrarlo del todo exigiría encoger `spreadC` por dificultad para targets saturados — decisión de balance de juego que reabre la tabla `DIFFICULTY` (PRD cerrado), fuera de alcance de un fix de gamut puntual. Diferido, requiere su propio brainstorm si se decide perseguir.
+
+**`hooks/useDaily.ts` duplica a mano las fórmulas de puntuación de `lib/engine.ts`.** `applyDailyGuess`/`applyDailyHint` copian línea por línea `applyGuess`/`applyHint` (documentado en el comentario de cabecera de ambos archivos) porque esas dos funciones no están exportadas y están atadas a la forma de `GameState`, no de `Round`. Un cambio futuro en la fórmula de puntuación o de pistas de Solo/Duelo tiene que acordarse de tocar también `useDaily.ts`, o Diario divergerá en silencio de Solo/Duelo. Sin test de contrato entre los dos que lo impida hoy.
 
 ---
 

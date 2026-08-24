@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useDaily } from "../../hooks/useDaily";
-import { buildShareText, localDateKey } from "../../lib/daily";
+import { buildShareText } from "../../lib/daily";
 import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
 import { DIFFICULTY } from "../../lib/types";
@@ -56,7 +56,7 @@ export function Diario() {
   }
 
   async function handleShare() {
-    const text = buildShareText(localDateKey(), {
+    const text = buildShareText(state.dateKey, {
       guesses: round.guesses,
       hints: round.hints,
       status: round.status === "solved" ? "solved" : "failed",
@@ -71,9 +71,13 @@ export function Diario() {
       return;
     }
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-      setShareStatus("copied");
-      setTimeout(() => setShareStatus("idle"), 1500);
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareStatus("copied");
+        setTimeout(() => setShareStatus("idle"), 1500);
+      } catch {
+        // portapapeles denegado (permisos/foco) — no es un error de la app
+      }
     }
   }
 
@@ -84,7 +88,7 @@ export function Diario() {
           ←
         </Link>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
-          Diario · {localDateKey()}
+          Diario · {state.dateKey}
         </span>
       </div>
 
@@ -102,7 +106,7 @@ export function Diario() {
           </div>
           <HintRow
             hints={round.hints}
-            maxHints={DIFFICULTY.medio.maxHints}
+            maxHints={DIFFICULTY[round.gridSpec.difficulty].maxHints}
             hasGuessed={round.guesses.length > 0}
             disabled={false}
             onRequestHint={handleHint}

@@ -20,8 +20,6 @@ import type { GridSpec, HintKind, Round } from "../lib/types";
  * scoreBreakdown SÍ se reutilizan directamente: ya operan solo sobre Round.
  */
 
-const DAILY_DIFFICULTY = "medio" as const;
-const DAILY_SIZE = 6 as const;
 const PLACEHOLDER_PLAYER_ID = "daily-player";
 const DAILY_STORAGE_KEY = "matiz-daily-v1";
 
@@ -30,22 +28,22 @@ interface DailyStorage {
   readonly result: DailyResult;
 }
 
-function readCache(): DailyResult | null {
+function readCache(dateKey: string): DailyResult | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(DAILY_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DailyStorage;
-    if (parsed.date !== localDateKey()) return null;
+    if (parsed.date !== dateKey) return null;
     return parsed.result;
   } catch {
     return null;
   }
 }
 
-function writeCache(result: DailyResult): void {
+function writeCache(dateKey: string, result: DailyResult): void {
   if (typeof window === "undefined") return;
-  const payload: DailyStorage = { date: localDateKey(), result };
+  const payload: DailyStorage = { date: dateKey, result };
   window.localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(payload));
 }
 
@@ -55,14 +53,15 @@ export interface DailyState {
   readonly phase: DailyPhase;
   readonly gridSpec: GridSpec | null;
   readonly round: Round | null;
+  readonly dateKey: string;
 }
 
 export type DailyAction =
-  | { type: "HYDRATE"; cached: DailyResult | null; gridSpec: GridSpec }
+  | { type: "HYDRATE"; cached: DailyResult | null; gridSpec: GridSpec; dateKey: string }
   | { type: "GUESS"; row: number; col: number }
   | { type: "REQUEST_HINT"; kind: HintKind };
 
-const initialDailyState: DailyState = { phase: "loading", gridSpec: null, round: null };
+const initialDailyState: DailyState = { phase: "loading", gridSpec: null, round: null, dateKey: "" };
 
 function chebyshev(a: { row: number; col: number }, b: { row: number; col: number }): number {
   return Math.max(Math.abs(a.row - b.row), Math.abs(a.col - b.col));
@@ -97,14 +96,14 @@ function applyDailyGuess(round: Round, gridSpec: GridSpec, row: number, col: num
 // Espejo de applyHint en lib/engine.ts — ver comentario de cabecera.
 function applyDailyHint(round: Round, gridSpec: GridSpec, kind: HintKind): Round {
   if (round.status !== "playing") return round;
-  const maxHints = DIFFICULTY[DAILY_DIFFICULTY].maxHints;
+  const maxHints = DIFFICULTY[gridSpec.difficulty].maxHints;
   if (round.hints.length >= maxHints) return round;
   if (round.hints.some((h) => h.kind === kind)) return round;
   if (kind === "dir" && round.guesses.length === 0) return round;
 
   const grid = buildGrid(gridSpec);
   const target = grid.target;
-  const n = DAILY_SIZE - 1 || 1;
+  const n = gridSpec.size - 1 || 1;
 
   let text: string;
   if (kind === "light") {
@@ -142,6 +141,7 @@ function dailyReducer(state: DailyState, action: DailyAction): DailyState {
         id: "daily",
         guesserId: PLACEHOLDER_PLAYER_ID,
         setterId: null,
+        // stub solo para satisfacer Round/el cálculo de closeness — jamás se pasa a Reveal (Diario no tiene pista)
         clue: { type: "word", word: "", targetHex: action.gridSpec.targetHex },
         gridSpec: action.gridSpec,
         guesses: action.cached?.guesses ?? [],
@@ -149,7 +149,12 @@ function dailyReducer(state: DailyState, action: DailyAction): DailyState {
         status: action.cached?.status ?? "playing",
         score: action.cached?.score ?? null,
       };
-      return { phase: action.cached ? "result" : "playing", gridSpec: action.gridSpec, round };
+      return {
+        phase: action.cached ? "result" : "playing",
+        gridSpec: action.gridSpec,
+        round,
+        dateKey: action.dateKey,
+      };
     }
     case "GUESS": {
       if (state.phase !== "playing" || !state.round || !state.gridSpec) return state;
@@ -170,16 +175,27 @@ export function useDaily(): { state: DailyState; dispatch: Dispatch<DailyAction>
   const [state, dispatch] = useReducer(dailyReducer, initialDailyState);
 
   useEffect(() => {
-    const gridSpec = buildDailyGridSpec();
-    dispatch({ type: "HYDRATE", cached: readCache(), gridSpec });
+    // localDateKey() se llama UNA sola vez aquí (misma marca de tiempo `now`
+    // que arma gridSpec) y se propaga como state.dateKey — evita que una
+    // ronda que cruza la medianoche local se guarde bajo la fecha
+    // equivocada (ver dateKey en DailyState).
+    const now = new Date();
+    const dateKey = localDateKey(now);
+    const gridSpec = buildDailyGridSpec(now);
+    dispatch({ type: "HYDRATE", cached: readCache(dateKey), gridSpec, dateKey });
   }, []);
 
   useEffect(() => {
     const round = state.round;
     if (state.phase !== "result" || !round || round.status === "playing") return;
-    if (readCache()) return;
-    writeCache({ guesses: round.guesses, hints: round.hints, status: round.status, score: round.score ?? 0 });
-  }, [state.phase, state.round]);
+    if (readCache(state.dateKey)) return;
+    writeCache(state.dateKey, {
+      guesses: round.guesses,
+      hints: round.hints,
+      status: round.status,
+      score: round.score ?? 0,
+    });
+  }, [state.phase, state.round, state.dateKey]);
 
   return { state, dispatch };
 }
