@@ -50,3 +50,11 @@ export interface DailyResult {
   readonly status: Exclude<RoundStatus, "playing">;
   readonly score: number;
 }
+
+const RING_EMOJI = ["🟩", "🟨", "🟧"] as const;
+
+export function buildShareText(dateKey: string, result: DailyResult): string {
+  const symbols = result.guesses.map((g) => RING_EMOJI[g.ring] ?? "⬜").join("");
+  const hintsLabel = result.hints.length === 1 ? "1 pista" : `${result.hints.length} pistas`;
+  return `MATIZ ${dateKey}\n${symbols}\n${result.score} pts, ${hintsLabel}`;
+}

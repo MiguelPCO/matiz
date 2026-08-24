@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hexToOklch } from "./color";
-import { buildDailyGridSpec, localDateKey } from "./daily";
+import { buildDailyGridSpec, buildShareText, localDateKey } from "./daily";
 
 describe("daily.localDateKey", () => {
   it("misma fecha local produce la misma clave, sin importar la hora", () => {
@@ -50,5 +50,21 @@ describe("daily.buildDailyGridSpec", () => {
       hexes.add(buildDailyGridSpec(new Date(2026, 0, i + 1)).targetHex);
     }
     expect(hexes.size).toBeGreaterThanOrEqual(N - 2);
+  });
+});
+
+describe("daily.buildShareText", () => {
+  it("formato exacto estilo Wordle para un DailyResult de muestra", () => {
+    const text = buildShareText("2026-08-23", {
+      guesses: [
+        { row: 1, col: 1, hex: "#aabbcc", ring: 2, closeness: 0.4 },
+        { row: 2, col: 2, hex: "#bbccdd", ring: 3, closeness: 0.2 },
+        { row: 3, col: 3, hex: "#ccddee", ring: 4, closeness: 0.1 },
+      ],
+      hints: [{ kind: "light", text: "Claro" }],
+      status: "failed",
+      score: 42,
+    });
+    expect(text).toBe("MATIZ 2026-08-23\n🟧⬜⬜\n42 pts, 1 pista");
   });
 });
