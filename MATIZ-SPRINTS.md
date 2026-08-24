@@ -176,6 +176,28 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 
 ---
 
+## Sprint 6 — Modo Diario
+
+**Objetivo:** un matiz compartido al día, jugable y compartible, sin tocar el motor de Solo/Duelo.
+
+### Tareas
+
+- [x] `lib/daily.ts` — `localDateKey`, hash FNV-1a → seed, `buildDailyGridSpec` (rango curado L∈[0.4,0.72]/C∈[0.06,0.16])
+- [x] `lib/daily.ts` — `buildShareText`, tarjeta de resultado estilo Wordle
+- [x] `hooks/useDaily.ts` — `useReducer` propio, sin tocar `useGame`/`lib/engine.ts`; GUESS/REQUEST_HINT espejan `applyGuess`/`applyHint`
+- [x] Persistencia `localStorage["matiz-daily-v1"]` — un resultado por día, sin histórico
+- [x] `components/game/Reveal.tsx` — `clue` opcional (aditivo, Solo/Duelo sin cambios)
+- [x] `app/diario/page.tsx` + `components/screens/Diario.tsx` — sin `ClueBar`, sin panel de pista
+- [x] `components/screens/Home.tsx` — Diario desbloqueado
+
+### Aceptación
+
+- Home → Diario → jugar una ronda → Reveal sin panel de pista → compartir/copiar resultado
+- Recargar la página cachea el resultado del día (bloquea replay); un día distinto permite jugar de nuevo
+- Cero cambios en `lib/engine.ts`
+
+---
+
 ## Resumen de dependencias
 
 ```

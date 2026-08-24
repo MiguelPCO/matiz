@@ -31,10 +31,7 @@ export function Diario() {
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const grid = useMemo(
-    () => (state.round ? buildGrid(state.round.gridSpec) : null),
-    [state.round?.gridSpec],
-  );
+  const grid = useMemo(() => (state.round ? buildGrid(state.round.gridSpec) : null), [state.round?.gridSpec]);
 
   if (state.phase === "loading" || !state.round || !grid) {
     return (
