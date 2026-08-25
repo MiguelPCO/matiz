@@ -51,7 +51,10 @@ export function Play() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 px-4 pt-10 pb-6">
+    <div
+      data-theme="dark"
+      className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6"
+    >
       <div className="flex w-full max-w-xs items-center justify-between">
         {!confirmingExit ? (
           <button

@@ -19,3 +19,32 @@
   --radius-panel: 12px;
   --radius-frame: 14px;
 }
+
+/*
+ * Tema claro/oscuro — SOLO para pantallas de "chrome" (Home, Setup,
+ * HowToPlay, Curtain, Scoreboard). Nunca debe alcanzar la grilla de
+ * juego (ColorCard/Swatch/Reveal/Thermometer, montadas en Play.tsx y
+ * Diario.tsx): esas pantallas fuerzan data-theme="dark" en su raíz
+ * para no romper la calibración de dificultad ni introducir contraste
+ * simultáneo sobre los swatches (PRD §5.2 — el fondo neutro oscuro es
+ * la condición para poder juzgar color, no una decisión estética).
+ */
+[data-theme="dark"] {
+  --color-surface-0: oklch(0.18 0.006 255);
+  --color-surface-1: oklch(0.235 0.006 255);
+  --color-surface-2: oklch(0.295 0.006 255);
+  --color-line: oklch(0.36 0.007 255);
+  --color-text-faint: oklch(0.52 0.012 255);
+  --color-text-muted: oklch(0.7 0.016 255);
+  --color-text: oklch(0.93 0.005 255);
+}
+
+[data-theme="light"] {
+  --color-surface-0: oklch(0.97 0.004 255); /* #F4F5F6 */
+  --color-surface-1: oklch(0.93 0.004 255); /* #E7E9EB */
+  --color-surface-2: oklch(0.88 0.005 255); /* #D9DBDE */
+  --color-line: oklch(0.78 0.006 255); /* #BFC3C8 */
+  --color-text-faint: oklch(0.55 0.012 255); /* #767D87 */
+  --color-text-muted: oklch(0.42 0.014 255); /* #565D68 */
+  --color-text: oklch(0.16 0.006 255); /* #17191C */
+}

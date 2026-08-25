@@ -35,7 +35,7 @@ export function Diario() {
 
   if (state.phase === "loading" || !state.round || !grid) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-surface-0">
+      <main data-theme="dark" className="flex min-h-dvh items-center justify-center bg-surface-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
           Cargando el matiz de hoy…
         </p>
@@ -82,7 +82,10 @@ export function Diario() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 px-4 pt-10 pb-6">
+    <div
+      data-theme="dark"
+      className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6"
+    >
       <div className="flex w-full max-w-xs items-center justify-between">
         <Link href="/" aria-label="Volver" className="font-mono text-lg text-text-muted">
           ←

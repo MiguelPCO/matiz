@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
+import { useTheme } from "../../hooks/useTheme";
 import { oklchToHex } from "../../lib/color";
 import { Button } from "../ui/Button";
 import { Label } from "../ui/Label";
@@ -24,6 +25,7 @@ function useCalibrationStrip(): readonly string[] {
 
 export function Home() {
   const { state, dispatch } = useGame();
+  const [theme, toggleTheme] = useTheme();
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [collectingNames, setCollectingNames] = useState(false);
   const [nameA, setNameA] = useState("");
@@ -36,14 +38,24 @@ export function Home() {
 
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-10 px-4">
-      <button
-        type="button"
-        onClick={() => setHowToPlayOpen(true)}
-        aria-label="Cómo se juega"
-        className="absolute top-6 right-6 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
-      >
-        ?
-      </button>
+      <div className="absolute top-6 right-6 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+        >
+          {theme === "dark" ? "☀" : "☾"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setHowToPlayOpen(true)}
+          aria-label="Cómo se juega"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+        >
+          ?
+        </button>
+      </div>
 
       <div className="flex flex-col items-center gap-3 text-center">
         <h1 className="font-sans text-3xl tracking-[0.35em] text-text uppercase">

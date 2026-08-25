@@ -33,7 +33,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script
+          // Aplica el tema guardado antes del primer paint para evitar
+          // flash oscuro→claro en pantallas de chrome (Home/Setup).
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('matiz-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}",
+          }}
+        />
+      </head>
       <body className={`${generalSans.variable} ${geistMono.variable} antialiased`}>
         <GameProvider>{children}</GameProvider>
         <Analytics />
