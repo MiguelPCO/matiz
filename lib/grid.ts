@@ -205,11 +205,28 @@ export function findFeasiblePositions(
 export function buildGridLattice(spec: GridSpec): GridLattice {
   const { size, difficulty, targetHex, seed } = spec;
   const next = rng(seed);
-  const tr = Math.floor(next() * size);
-  const tc = Math.floor(next() * size);
 
   const { L: L0, C: C0, H } = hexToOklch(targetHex);
   const cfg = DIFFICULTY[difficulty];
+
+  // Se elige la posición del target ANTES de generar el resto de la
+  // carta, entre las posiciones donde el ajuste de gamut ya da shift
+  // cero (ver findFeasiblePositions) — en vez de fijarla por RNG puro y
+  // forzar al resto de la carta a encajar alrededor después. Si ninguna
+  // posición sirve (target muy saturado, carta pequeña), cae al RNG puro
+  // de siempre: mismo comportamiento que hoy en producción, nunca peor.
+  const feasible = findFeasiblePositions(L0, C0, H, size, cfg);
+  let tr: number;
+  let tc: number;
+  if (feasible.length > 0) {
+    const idx = Math.floor(next() * feasible.length);
+    const picked = feasible[idx] ?? feasible[0] ?? { tr: 0, tc: 0 };
+    tr = picked.tr;
+    tc = picked.tc;
+  } else {
+    tr = Math.floor(next() * size);
+    tc = Math.floor(next() * size);
+  }
 
   const { shiftL, shiftC, lStep, cStep } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
 

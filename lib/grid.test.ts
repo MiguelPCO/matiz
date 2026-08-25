@@ -134,21 +134,47 @@ const MAX_ACCEPTABLE_VIOLATIONS = 130;
 // aquí (ver Nota de método: las decisiones de PRD/DIFFICULTY no se reabren
 // a mitad de un fix puntual).
 //
-// Estos dos números están clavados para que una regresión futura en
-// lBoundsFor/buildGridLattice se note de inmediato, no solo "el agregado
-// empeoró un poco".
+// Reposition (Sprint 6, 2026-08-25) — ver docs/superpowers/specs/2026-08-25-grid-target-reposition-design.md.
+// La posición del target ahora se elige, cuando es posible, entre las
+// posiciones donde el ajuste de gamut ya da shift cero (findFeasiblePositions)
+// en vez de forzar la carta a encajar alrededor de una posición random.
+// Cierra AL 100% varios casos reales (medidos, no optimistas):
 describe("grid.gamutFit", () => {
-  it("facil/4x4 con #e7a34b: mean|shiftC| ~0.026 (antes ~0.067 con lStep, ~0.106 línea base) — cStep posicional casi lo cierra", () => {
-    let sum = 0;
-    const N = 30;
-    for (let seed = 0; seed < N; seed++) {
+  // toBeCloseTo(0, 9) en vez de toBe(0) exacto: la cancelación en punto
+  // flotante deja un residuo de ~1e-18 en algunos seeds (p.ej. seed 4 de
+  // facil/4x4, seed 10 de medio/8x8 #d4af37) — nada mide eso (se pierde en
+  // la cuantización de 8 bits al pasar a hex), y es coherente con la propia
+  // tolerancia de 1e-9 que findFeasiblePositions usa para definir "feasible".
+  it("facil/4x4 con #e7a34b: reposition lo cierra del todo, shiftC=0 en las 30 seeds (antes mean 0.026)", () => {
+    for (let seed = 0; seed < 30; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 4, difficulty: "facil", targetHex: "#e7a34b" });
-      sum += Math.abs(shiftC);
+      expect(shiftC).toBeCloseTo(0, 9);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.035);
   });
 
-  it("dificil/8x8 con #e7a34b: mean|shiftC| ~0.076 (antes ~0.089, sin cambio con lStep) — mejora real pero residuo estructural persiste, fila larga sigue gamut-limitada", () => {
+  it("medio/8x8 con #6b3fa0 (morado — uno de los casos reportados en vivo): reposition lo cierra del todo, shiftC=0 en las 30 seeds", () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#6b3fa0" });
+      expect(shiftC).toBeCloseTo(0, 9);
+    }
+  });
+
+  it("medio/8x8 con #d4af37 (oro — otro caso reportado en vivo): reposition lo cierra del todo, shiftC=0 en las 30 seeds", () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#d4af37" });
+      expect(shiftC).toBeCloseTo(0, 9);
+    }
+  });
+
+  // Los siguientes tres casos NO se cierran — confirmado analíticamente:
+  // findFeasiblePositions devuelve el set vacío para estos, ni siquiera
+  // encogiendo cStep hasta ABSOLUTE_MIN_STEP_C cabe la fila en ninguna
+  // posición del tamaño elegido. Es geometría real (gamut sRGB es angosto
+  // en magenta/rojo muy saturado en casi todo L), no una limitación del
+  // algoritmo de búsqueda. Cerrarlo del todo exige encoger spreadC —
+  // decisión de balance que reabre DIFFICULTY, diferida (ver MATIZ-SPRINTS.md).
+
+  it("dificil/8x8 con #e7a34b: pared geométrica real, reposition no cierra este caso (mean|shiftC| ~0.076, sin cambio respecto al fix anterior)", () => {
     let sum = 0;
     const N = 30;
     for (let seed = 0; seed < N; seed++) {
@@ -156,6 +182,26 @@ describe("grid.gamutFit", () => {
       sum += Math.abs(shiftC);
     }
     expect(sum / N).toBeLessThanOrEqual(0.085);
+  });
+
+  it("medio/5x5 con #e91e8c (fucsia — caso reportado en vivo): pared geométrica real, sin cambio (mean|shiftC| ~0.084)", () => {
+    let sum = 0;
+    const N = 30;
+    for (let seed = 0; seed < N; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 5, difficulty: "medio", targetHex: "#e91e8c" });
+      sum += Math.abs(shiftC);
+    }
+    expect(sum / N).toBeLessThanOrEqual(0.095);
+  });
+
+  it("medio/6x6 con #b41919 (rojo tipo manzana — el caso reportado en vivo originalmente): pared geométrica real, sin cambio (mean|shiftC| ~0.046)", () => {
+    let sum = 0;
+    const N = 100;
+    for (let seed = 0; seed < N; seed++) {
+      const { shiftC } = buildGridLattice({ seed, size: 6, difficulty: "medio", targetHex: "#b41919" });
+      sum += Math.abs(shiftC);
+    }
+    expect(sum / N).toBeLessThanOrEqual(0.055);
   });
 });
 
@@ -205,5 +251,29 @@ describe("grid.findFeasiblePositions", () => {
     const { L: L0, C: C0, H } = hexToOklch("#ff0000");
     const feasible = findFeasiblePositions(L0, C0, H, 4, DIFFICULTY.dificil);
     expect(feasible.length).toBe(0);
+  });
+});
+
+// Medido durante el diseño (ver spec): 10/600 = 1.7% sobre esta misma
+// muestra. Cap generoso (no el número exacto) por la misma razón que
+// MAX_ACCEPTABLE_VIOLATIONS: no esconder una regresión real detrás de un
+// número que se ajusta hasta que el sample de turno pasa.
+describe("grid.fallbackRate", () => {
+  it("con reposition, el fallback (ninguna posición feasible) es raro sobre la muestra estándar de SAMPLE_TARGETS", () => {
+    let fallbackCount = 0;
+    let total = 0;
+    for (const difficulty of DIFFICULTIES) {
+      for (const size of SIZES) {
+        for (let seed = 0; seed < 50; seed++) {
+          const spec = specsFor(difficulty, size, seed);
+          const { L: L0, C: C0, H } = hexToOklch(spec.targetHex);
+          const feasible = findFeasiblePositions(L0, C0, H, spec.size, DIFFICULTY[spec.difficulty]);
+          total++;
+          if (feasible.length === 0) fallbackCount++;
+        }
+      }
+    }
+    expect(total).toBe(600);
+    expect(fallbackCount).toBeLessThanOrEqual(30);
   });
 });
