@@ -40,7 +40,7 @@ export function Home() {
         type="button"
         onClick={() => setHowToPlayOpen(true)}
         aria-label="Cómo se juega"
-        className="absolute top-6 right-6 font-mono text-xs text-text-faint"
+        className="absolute top-6 right-6 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
       >
         ?
       </button>
