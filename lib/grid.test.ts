@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deltaE } from "./color";
-import { buildGrid, buildGridLattice } from "./grid";
+import { deltaE, hexToOklch } from "./color";
+import { buildGrid, buildGridLattice, findFeasiblePositions } from "./grid";
 import { ABSOLUTE_MIN_STEP_C, DIFFICULTY, MIN_STEP_C, MIN_STEP_L } from "./types";
 import type { Difficulty, GridSize, GridSpec } from "./types";
 
@@ -185,5 +185,25 @@ describe("grid.decidable", () => {
     }
 
     expect(violationCount).toBeLessThanOrEqual(MAX_ACCEPTABLE_VIOLATIONS);
+  });
+});
+
+describe("grid.findFeasiblePositions", () => {
+  it("target de croma moderado y L centrado: casi todas las posiciones son feasible, no todas (35/36 en medio/6x6 #7d69a8)", () => {
+    const { L: L0, C: C0, H } = hexToOklch("#7d69a8");
+    const feasible = findFeasiblePositions(L0, C0, H, 6, DIFFICULTY.medio);
+    expect(feasible.length).toBe(35);
+  });
+
+  it("target muy desaturado (C0 cerca de C_MIN): restringido a posiciones cerca del extremo apagado — no es 'todo vale', el suelo C_MIN también limita (18/36 en medio/6x6 #6a5f52)", () => {
+    const { L: L0, C: C0, H } = hexToOklch("#6a5f52");
+    const feasible = findFeasiblePositions(L0, C0, H, 6, DIFFICULTY.medio);
+    expect(feasible.length).toBe(18);
+  });
+
+  it("target muy saturado (C0 cerca de C_MAX) en carta pequeña: ninguna posición sirve, set vacío — ejercita la rama de fallback en buildGridLattice", () => {
+    const { L: L0, C: C0, H } = hexToOklch("#ff0000");
+    const feasible = findFeasiblePositions(L0, C0, H, 4, DIFFICULTY.dificil);
+    expect(feasible.length).toBe(0);
   });
 });

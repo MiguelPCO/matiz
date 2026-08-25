@@ -171,6 +171,37 @@ function computeLatticeParams(
   return { shiftL, shiftC, lStep, cStep };
 }
 
+export interface FeasiblePosition {
+  readonly tr: number;
+  readonly tc: number;
+}
+
+/**
+ * Todas las posiciones (tr, tc) donde la carta encaja en gamut sin
+ * necesitar NINGÚN desplazamiento (shiftL = 0 Y shiftC = 0) — evaluando
+ * la misma maquinaria adaptativa que ya usa buildGridLattice, no una
+ * versión simplificada. Pura, sin RNG: buildGridLattice la usa para
+ * elegir la posición del target antes de generar el resto de la carta.
+ */
+export function findFeasiblePositions(
+  L0: number,
+  C0: number,
+  H: number,
+  size: GridSize,
+  cfg: DifficultyConfig,
+): FeasiblePosition[] {
+  const feasible: FeasiblePosition[] = [];
+  for (let tc = 0; tc < size; tc++) {
+    for (let tr = 0; tr < size; tr++) {
+      const { shiftL, shiftC } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
+      if (Math.abs(shiftL) < 1e-9 && Math.abs(shiftC) < 1e-9) {
+        feasible.push({ tr, tc });
+      }
+    }
+  }
+  return feasible;
+}
+
 export function buildGridLattice(spec: GridSpec): GridLattice {
   const { size, difficulty, targetHex, seed } = spec;
   const next = rng(seed);
