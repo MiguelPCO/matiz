@@ -64,7 +64,12 @@ export function Setup() {
   const [draft, setDraft] = useState<ClueDraft>({ status: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showPicker = state.hasPlayed && !(state.mode === "duel" && state.rounds.length > 0);
+  // Duelo: dos jugadores que ya eligieron el modo no necesitan el
+  // onboarding "primera partida sin selector" (eso es solo para Solo).
+  // El selector se muestra en la ronda 1 y se bloquea desde la ronda 2
+  // en adelante — misma config para ambos jugadores (PRD §4.8).
+  const showPicker =
+    state.mode === "duel" ? state.rounds.length === 0 : state.hasPlayed;
 
   const rival = state.mode === "duel" ? state.players[1 - state.activeIndex] : null;
   const pistaLabel = rival ? `Pista para ${rival.name}` : "Pista";
@@ -161,20 +166,28 @@ export function Setup() {
               aria-label="Dificultad"
             />
           </div>
-          <div>
-            <Label className="mb-1.5 block">Tipo de pista</Label>
-            <Segmented
-              options={CLUE_TYPE_OPTIONS}
-              value={clueType}
-              onChange={(v: ClueType) => {
-                setClueType(v);
-                setDraft({ status: "idle" });
-              }}
-              aria-label="Tipo de pista"
-            />
-          </div>
         </div>
       )}
+
+      {/*
+        Tipo de pista fuera de showPicker a propósito: en duelo, tamaño y
+        dificultad se bloquean tras la ronda 1 (misma configuración para
+        ambos jugadores, PRD §4.8), pero cada jugador elige su propio
+        palabra/imagen al poner pista — bloquearlo dejaba al segundo
+        jugador sin poder cambiar de palabra a imagen.
+      */}
+      <div>
+        <Label className="mb-1.5 block">Tipo de pista</Label>
+        <Segmented
+          options={CLUE_TYPE_OPTIONS}
+          value={clueType}
+          onChange={(v: ClueType) => {
+            setClueType(v);
+            setDraft({ status: "idle" });
+          }}
+          aria-label="Tipo de pista"
+        />
+      </div>
 
       {clueType === "word" ? (
         <div key="word" className="flex flex-col gap-2">
