@@ -141,28 +141,34 @@ const MAX_ACCEPTABLE_VIOLATIONS = 130;
 // Cierra AL 100% varios casos reales (medidos, no optimistas):
 describe("grid.gamutFit", () => {
   // toBeCloseTo(0, 9) en vez de toBe(0) exacto: la cancelación en punto
-  // flotante deja un residuo de ~1e-18 en algunos seeds (p.ej. seed 4 de
-  // facil/4x4, seed 10 de medio/8x8 #d4af37) — nada mide eso (se pierde en
-  // la cuantización de 8 bits al pasar a hex), y es coherente con la propia
-  // tolerancia de 1e-9 que findFeasiblePositions usa para definir "feasible".
+  // flotante deja un residuo de ~1e-18 en muchos seeds, no solo un par
+  // sueltos — medido sobre las 30 seeds de cada caso de abajo, ocurre en
+  // dos de los tres: 16/30 en facil/4x4 #e7a34b, 30/30 (todas) en medio/8x8
+  // #d4af37; medio/8x8 #6b3fa0 da shiftC exactamente 0 en las 30 (0/30).
+  // Nada mide ese residuo por su cuenta (se pierde en la cuantización de 8
+  // bits al pasar a hex), y es coherente con la propia tolerancia de 1e-9
+  // que findFeasiblePositions usa para definir "feasible".
   it("facil/4x4 con #e7a34b: reposition lo cierra del todo, shiftC=0 en las 30 seeds (antes mean 0.026)", () => {
     for (let seed = 0; seed < 30; seed++) {
-      const { shiftC } = buildGridLattice({ seed, size: 4, difficulty: "facil", targetHex: "#e7a34b" });
+      const { shiftC, shiftL } = buildGridLattice({ seed, size: 4, difficulty: "facil", targetHex: "#e7a34b" });
       expect(shiftC).toBeCloseTo(0, 9);
+      expect(shiftL).toBeCloseTo(0, 9);
     }
   });
 
   it("medio/8x8 con #6b3fa0 (morado — uno de los casos reportados en vivo): reposition lo cierra del todo, shiftC=0 en las 30 seeds", () => {
     for (let seed = 0; seed < 30; seed++) {
-      const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#6b3fa0" });
+      const { shiftC, shiftL } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#6b3fa0" });
       expect(shiftC).toBeCloseTo(0, 9);
+      expect(shiftL).toBeCloseTo(0, 9);
     }
   });
 
   it("medio/8x8 con #d4af37 (oro — otro caso reportado en vivo): reposition lo cierra del todo, shiftC=0 en las 30 seeds", () => {
     for (let seed = 0; seed < 30; seed++) {
-      const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#d4af37" });
+      const { shiftC, shiftL } = buildGridLattice({ seed, size: 8, difficulty: "medio", targetHex: "#d4af37" });
       expect(shiftC).toBeCloseTo(0, 9);
+      expect(shiftL).toBeCloseTo(0, 9);
     }
   });
 
@@ -251,6 +257,37 @@ describe("grid.findFeasiblePositions", () => {
     const { L: L0, C: C0, H } = hexToOklch("#ff0000");
     const feasible = findFeasiblePositions(L0, C0, H, 4, DIFFICULTY.dificil);
     expect(feasible.length).toBe(0);
+  });
+
+  // Los dos tests siguientes clavan la propia elección de posición, no solo
+  // la matemática de gamut de la que depende: nada en el resto de la suite
+  // fallaría si buildGridLattice, por un bug de wiring, ignorase el feasible
+  // set devuelto por findFeasiblePositions y usara siempre feasible[0], o
+  // cualquier índice fijo — todos los tests de gamutFit/decidable seguirían
+  // en verde porque feasible[0] también cumple shiftL=shiftC=0.
+  it("buildGridLattice's chosen target is always a member of findFeasiblePositions' output, when non-empty", () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const spec: GridSpec = { seed, size: 8, difficulty: "medio", targetHex: "#d4af37" };
+      const { L: L0, C: C0, H } = hexToOklch(spec.targetHex);
+      const feasible = findFeasiblePositions(L0, C0, H, spec.size, DIFFICULTY[spec.difficulty]);
+      if (feasible.length === 0) continue;
+      const lattice = buildGridLattice(spec);
+      const isMember = feasible.some((p) => p.tr === lattice.target.row && p.tc === lattice.target.col);
+      expect(isMember).toBe(true);
+    }
+  });
+
+  it("target position actually varies across seeds when the feasible set has more than one option", () => {
+    const spec = (seed: number): GridSpec => ({ seed, size: 8, difficulty: "medio", targetHex: "#7d69a8" });
+    const { L: L0, C: C0, H } = hexToOklch("#7d69a8");
+    const feasible = findFeasiblePositions(L0, C0, H, 8, DIFFICULTY.medio);
+    expect(feasible.length).toBeGreaterThan(1);
+    const seenPositions = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const lattice = buildGridLattice(spec(seed));
+      seenPositions.add(`${lattice.target.row},${lattice.target.col}`);
+    }
+    expect(seenPositions.size).toBeGreaterThan(1);
   });
 });
 

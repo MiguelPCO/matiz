@@ -229,8 +229,43 @@ explícitamente fuera de alcance, ver más abajo).
   para saturación extrema queda diferido (encoger `spreadC`,
   reabriendo `DIFFICULTY`), no se persigue en este trabajo.
 - No se toca la distribución de posiciones "target puede caer en
-  cualquier celda con igual probabilidad" — para targets muy saturados,
-  el target ahora solo puede caer en el subconjunto feasible, que puede
-  sesgarse hacia el centro de la carta en tamaños grandes. No se
-  considera un problema de juego (PRD no exige uniformidad de posición
-  como mecánica), pero se deja anotado por si Miguel lo nota jugando.
+  cualquier celda con igual probabilidad" — el target ahora solo puede
+  caer en el subconjunto feasible. **Ver la sección siguiente, "Decisión
+  abierta (pendiente de Miguel)", para el sesgo real medido y un caso
+  degenerado que no es un simple sesgo — esto ya NO se trata como un
+  riesgo aceptado sin más.**
+
+## Decisión abierta (pendiente de Miguel)
+
+Corrección (whole-branch review, 2026-08-25, medido empíricamente sobre
+12,000+ muestras) a una afirmación anterior de este mismo documento, que
+decía que el sesgo posicional "puede sesgarse hacia el centro" y lo daba
+por aceptado sin más — ambas cosas eran incorrectas:
+
+- **Dirección y magnitud reales del sesgo:** el target NO se sesga hacia
+  el centro. Se sesga hacia `tr=0` (la fila más vívida/arriba), porque
+  ahí la restricción de croma hacia arriba (`fromTop`, ver
+  `computeLatticeParams`) es vacía (`tr > 0 ? … : Infinity`) — cualquier
+  posición en `tr=0` es más fácil de hacer feasible que una interior.
+  Medido en 8×8: 32.8% de las posiciones elegidas caen en `tr=0`, frente
+  al 12.5% esperado bajo distribución uniforme (2.6x sobre-representado).
+  PRD no exige uniformidad de posición como mecánica, así que esto no es
+  por sí solo un blocker — pero el caso siguiente sí es cualitativamente
+  distinto de un simple sesgo.
+- **Caso degenerado, no solo sesgo — posición de respuesta fija:**
+  `dificil/5×5` con `targetHex = "#e7a34b"` (el ámbar de marca del
+  propio proyecto, uno de los `SAMPLE_TARGETS` de test) tiene
+  exactamente **una** posición feasible (`tr=0, tc=3`). El target cae en
+  esa misma celda en el 100% de las partidas — 300/300 seeds probados,
+  cero variación. No es sesgo, es una posición de respuesta fija y
+  predecible para una combinación real de tamaño/dificultad/color que el
+  juego genera hoy.
+
+**Esto queda como decisión abierta pendiente de que Miguel la vea y
+decida, no como riesgo ya aceptado.** Cerrarlo (más feasible positions
+para este caso, o un fallback que reintroduzca variedad cuando
+`feasible.length` es muy pequeño) es una decisión de producto/balance —
+no se implementa en este fix, que es solo documentación + tests de
+wiring. `GridLattice` ahora expone `shiftL` (antes solo `shiftC`), así
+que este tipo de caso es verificable en test sin depender de renderizar
+en vivo.

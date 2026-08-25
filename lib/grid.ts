@@ -71,6 +71,11 @@ export interface GridLattice {
    * del objetivo — que nunca se desplaza — y más se delata éste por
    * contraste frente al resto de su fila. */
   readonly shiftC: number;
+  /** Desplazamiento uniforme de luminosidad aplicado a toda la carta por
+   * encaje de gamut (ver fitShift). Expuesto solo para tests, misma
+   * razón que shiftC: cuando la posición elegida viene del set feasible
+   * de findFeasiblePositions, shiftL es 0 por construcción. */
+  readonly shiftL: number;
   readonly target: { readonly row: number; readonly col: number };
   readonly cells: readonly (readonly GridLatticeCell[])[];
 }
@@ -241,7 +246,7 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
     cells.push(line);
   }
 
-  return { size, H, lStep, cStep, shiftC, target: { row: tr, col: tc }, cells };
+  return { size, H, lStep, cStep, shiftC, shiftL, target: { row: tr, col: tc }, cells };
 }
 
 export function buildGrid(spec: GridSpec): Grid {
