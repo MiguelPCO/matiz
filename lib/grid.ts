@@ -1,6 +1,6 @@
 import { deltaE, hexToOklch, maxInGamutChroma, oklchToHex } from "./color";
 import { ABSOLUTE_MIN_STEP_C, DIFFICULTY, MIN_STEP_C, MIN_STEP_L } from "./types";
-import type { Cell, Grid, GridSize, GridSpec, Seed } from "./types";
+import type { Cell, DifficultyConfig, Grid, GridSize, GridSpec, Seed } from "./types";
 
 /**
  * Carta de tonalidades del MISMO tono (H fijo).
@@ -75,15 +75,27 @@ export interface GridLattice {
   readonly cells: readonly (readonly GridLatticeCell[])[];
 }
 
-export function buildGridLattice(spec: GridSpec): GridLattice {
-  const { size, difficulty, targetHex, seed } = spec;
-  const next = rng(seed);
-  const tr = Math.floor(next() * size);
-  const tc = Math.floor(next() * size);
+interface LatticeParams {
+  readonly shiftL: number;
+  readonly shiftC: number;
+  readonly lStep: number;
+  readonly cStep: number;
+}
 
-  const { L: L0, C: C0, H } = hexToOklch(targetHex);
-  const cfg = DIFFICULTY[difficulty];
-
+/**
+ * El ajuste de gamut para UNA posición candidata del target. Extraída de
+ * buildGridLattice para que findFeasiblePositions (más abajo) pueda
+ * evaluarla en cualquier (tr, tc), no solo en la que el RNG dibujó.
+ */
+function computeLatticeParams(
+  tr: number,
+  tc: number,
+  L0: number,
+  C0: number,
+  H: number,
+  size: GridSize,
+  cfg: DifficultyConfig,
+): LatticeParams {
   // El eje L nunca choca con el gamut en sí mismo (croma 0 cabe en cualquier
   // L), pero el HUECO DE CROMA que el gamut deja en las columnas extremas sí
   // depende de cuánto se alejen esas columnas de L0 — y por tanto, de
@@ -96,12 +108,7 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   // técnica conocida).
   //
   // Fix: encoger lStep (nunca bajo MIN_STEP_L) hasta que las columnas
-  // extremas, más cerca de L0, dejen hueco de gamut suficiente. El objetivo
-  // no es solo C0 — es lo que la fila del objetivo necesita en su extremo
-  // más vivo (row=0): C0 + tr*desiredCStep, con desiredCStep calculado
-  // ANTES de saber cuánto gamut habrá (es el paso que se querría tener sin
-  // restricción). Ese hueco existe siempre en L0 mismo (targetHex es
-  // válido), así que basta con acercarse lo suficiente.
+  // extremas, más cerca de L0, dejen hueco de gamut suficiente.
   const nominalLStep = Math.max(cfg.spreadL / (size - 1), MIN_STEP_L);
   const desiredCStep = Math.max(cfg.spreadC / (size - 1), MIN_STEP_C);
   const desiredMaxRawC = C0 + tr * desiredCStep;
@@ -138,10 +145,6 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
         }
       }
     }
-    // Si ni MIN_STEP_L basta (target ya casi en el borde del gamut, o
-    // demasiadas filas de margen hasta row=0), queda el mejor esfuerzo — el
-    // residuo restante lo absorbe shiftC/cStep como antes, ahora partiendo
-    // de un hueco de gamut mayor.
     lStep = lo;
     lBounds = loBounds;
   }
@@ -151,10 +154,6 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   // §4.3) — el paso máximo que cabe sin shiftC no es simétrico sobre el
   // rango [C_MIN, gamutCeiling], es el hueco real desde C0 hacia cada
   // extremo dividido entre cuántas filas hay que recorrer para llegar ahí.
-  // La fórmula anterior, (gamutCeiling-C_MIN)/(size-1), asumía que el rango
-  // podía centrarse donde hiciera falta — ignoraba que C0 está clavado en
-  // la fila tr, así que un target ya cercano al techo de gamut seguía
-  // desbordando hacia shiftC pese a que cStep "cupiera" en el rango total.
   const fromTop = tr > 0 ? (gamutCeiling - C0) / tr : Infinity;
   const fromBottom = tr < size - 1 ? (C0 - C_MIN) / (size - 1 - tr) : Infinity;
   const affordableCStep = Math.min(fromTop, fromBottom);
@@ -168,6 +167,20 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   const shiftCLowerBound = C_MIN - minRawC;
   const neededGamutShift = Math.min(0, gamutCeiling - maxRawC);
   const shiftC = Math.max(shiftCLowerBound, neededGamutShift);
+
+  return { shiftL, shiftC, lStep, cStep };
+}
+
+export function buildGridLattice(spec: GridSpec): GridLattice {
+  const { size, difficulty, targetHex, seed } = spec;
+  const next = rng(seed);
+  const tr = Math.floor(next() * size);
+  const tc = Math.floor(next() * size);
+
+  const { L: L0, C: C0, H } = hexToOklch(targetHex);
+  const cfg = DIFFICULTY[difficulty];
+
+  const { shiftL, shiftC, lStep, cStep } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
 
   const cells: GridLatticeCell[][] = [];
   for (let row = 0; row < size; row++) {
