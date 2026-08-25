@@ -64,24 +64,69 @@ export function findFeasiblePositions(
 ): FeasiblePosition[]
 ```
 
-Sin RNG — función pura de color + tamaño + dificultad. Para cada columna
-`tc` (0..size-1), calcula los extremos de L a `nominalLStep` (la misma
-fórmula ya existente: `max(cfg.spreadL/(size-1), MIN_STEP_L)`) centrados
-en esa columna. Si esos extremos caen fuera de `[L_MIN, L_MAX]` —
-exigirían `shiftL != 0` — la columna entera se descarta (ninguna fila en
-esa columna puede ser feasible). Si caen dentro, calcula `gamutCeiling`
-igual que hoy (`min` de `maxInGamutChroma` en ambos extremos de L, con
-`C_MAX` como techo absoluto).
+Sin RNG — función pura de color + tamaño + dificultad.
 
-Con ese `gamutCeiling` fijo para la columna, recorre cada fila `tr`
-(0..size-1) y comprueba si el rango de croma que esa fila necesita a
-`desiredCStep` (`max(cfg.spreadC/(size-1), MIN_STEP_C)`, la misma fórmula
-ya existente) cabe en `[C_MIN, gamutCeiling]` sin desplazar. Si ambos
-extremos caben, `(tr, tc)` es feasible.
+**Corrección de diseño (encontrada midiendo, no en el primer borrador):**
+la definición correcta de "feasible" NO es "el paso nominal completo
+(`desiredCStep`) cabe sin desplazar". Esa versión inicial se probó y
+producía fallback en el 67.5% de una muestra estándar — demasiado
+conservadora, porque ignoraba que el algoritmo YA sabe encoger `cStep`
+(hasta `ABSOLUTE_MIN_STEP_C`) sin necesidad de `shiftC` en absoluto,
+siempre que la posición lo permita. La definición correcta —y la que de
+verdad predice si `buildGridLattice` terminará con `shiftC = 0`— es:
+**reusar exactamente la maquinaria ya existente** (la búsqueda adaptativa
+de `lStep` + el `affordableCStep` posicional, ambas ya en producción) evaluada
+en la posición candidata, y comprobar si el resultado da `shiftL = 0 Y
+shiftC = 0`. Con la definición corregida, la tasa de fallback sobre la
+misma muestra baja a 1.7%.
 
-Coste: como mucho `size²` combinaciones (≤ 64 en 8×8), con como mucho
-`2×size` llamadas a `maxInGamutChroma` (una vez por columna) — trivial,
-se ejecuta una vez por carta generada.
+Concretamente: para cada candidata `(tr, tc)` en `0..size-1 × 0..size-1`,
+ejecutar la misma lógica que hoy vive dentro de `buildGridLattice` (la
+búsqueda binaria de `lStep`, luego `fromTop`/`fromBottom`/`affordableCStep`,
+luego `shiftC`) parametrizada por esa `(tr, tc)` en vez de leerla de una
+variable de módulo — y quedarse con la posición solo si `shiftL` y
+`shiftC` resultantes son exactamente 0. Esto implica extraer esa lógica a
+una función interna reutilizable (ver siguiente sección) para no
+duplicar el algoritmo dos veces en el archivo.
+
+Coste: `size²` evaluaciones completas (≤ 64 en 8×8), cada una con hasta
+`2` llamadas a `maxInGamutChroma` más la búsqueda binaria de 24
+iteraciones ya existente — sigue siendo trivial (una carta se genera una
+vez por ronda, no en un hot loop).
+
+### Extraer la lógica compartida: `computeLatticeParams`
+
+Para que `findFeasiblePositions` pueda evaluar candidatas sin duplicar el
+algoritmo, la parte de `buildGridLattice` que va desde "calcular
+`nominalLStep`/`desiredCStep`" hasta "calcular `shiftC`" (líneas
+105–170 del archivo actual) se extrae a una función interna (no
+exportada, `lib/grid.ts` la usa desde ambos sitios):
+
+```ts
+interface LatticeParams {
+  readonly shiftL: number;
+  readonly shiftC: number;
+  readonly lStep: number;
+  readonly cStep: number;
+}
+
+function computeLatticeParams(
+  tr: number,
+  tc: number,
+  L0: number,
+  C0: number,
+  H: number,
+  size: GridSize,
+  cfg: DifficultyConfig,
+): LatticeParams
+```
+
+Cuerpo: exactamente el código ya existente (búsqueda binaria de `lStep`
+vía `lBoundsFor`, luego `fromTop`/`fromBottom`/`affordableCStep`/`cStep`,
+luego `shiftC`), solo que `tr`/`tc` son parámetros en vez de leerse de
+variables ya calculadas en el scope exterior. `buildGridLattice` pasa a
+llamar a esta función una vez con la posición final elegida;
+`findFeasiblePositions` la llama `size²` veces, una por candidata.
 
 ### Selección de posición en `buildGridLattice`
 
@@ -101,6 +146,7 @@ if (feasible.length > 0) {
   tr = Math.floor(next() * size);
   tc = Math.floor(next() * size);
 }
+const { shiftL, shiftC, lStep, cStep } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
 ```
 
 (El patrón `?? feasible[0] ?? {tr:0,tc:0}` sigue la misma idiom ya usada
@@ -109,12 +155,14 @@ en `grid.test.ts` para satisfacer `noUncheckedIndexedAccess` sin `!` —
 pero el compilador no lo sabe; el tercer fallback es puramente defensivo
 y nunca se ejecuta en la práctica.)
 
-El resto de `buildGridLattice` — búsqueda adaptativa de `lStep`, `cStep`
-posicional, `shiftC` residual — **no cambia ni una línea**. Cuando la
-posición viene del set feasible, esa maquinaria simplemente confirma lo
-que ya es cierto por construcción (`shiftL` y `shiftC` resuelven a 0) en
-vez de tener que corregir nada. Cuando cae al fallback (set vacío), el
-comportamiento es idéntico byte a byte al que ya está en producción hoy.
+Cuando la posición viene del set feasible, `computeLatticeParams` sobre
+esa misma posición simplemente confirma lo que ya es cierto por
+construcción (`shiftL` y `shiftC` dan 0) — no hace ningún trabajo extra
+respecto a lo que `findFeasiblePositions` ya evaluó, solo se recalcula
+una vez más por claridad (barato, ver nota de coste arriba). Cuando cae
+al fallback (set vacío), el comportamiento es idéntico byte a byte al
+que ya está en producción hoy — es literalmente el mismo código, ahora
+factorizado en una función.
 
 ### Determinismo
 
@@ -127,32 +175,59 @@ se re-miden como parte de este trabajo.
 
 ### Testing
 
-- **`grid.gamutFit` (re-medir, re-pinear):** los dos casos históricos
-  (`facil/4×4`, `dificil/8×8` con `#e7a34b`) más nuevos casos que
-  reproducen literalmente lo reportado — targets fucsia/morado/oro-ish en
-  5×5 y 8×8 — con la metodología ya establecida (30 seeds, mean
-  `|shiftC|`, números reales medidos, no optimistas).
-- **`grid.decidable`:** debe mantenerse igual o mejorar (nunca peor) —
-  posiciones feasible usan siempre el paso nominal completo, que es
-  mayor o igual que cualquier paso encogido que el algoritmo pudiera
-  haber usado antes.
-- **Unit test directo de `findFeasiblePositions`:** un target neutro de
-  croma bajo en L medio debe devolver las `size²` posiciones como
-  feasible (caso trivial, sanity check). Un target cerca de `C_MAX` en un
-  tamaño pequeño debe devolver un set pequeño o vacío — ejercita
-  explícitamente la rama de fallback.
-- **Medir tasa de fallback:** cuántos de los `SAMPLE_TARGETS` × tamaños ×
-  dificultades existentes en `grid.test.ts` caen en el set vacío
-  (fallback). Si resulta ser una fracción no trivial, se documenta como
-  nuevo dato en `MATIZ-SPRINTS.md`; no se optimiza más allá de esta
-  spec salvo que Miguel lo pida tras ver el número real.
+Números reales medidos durante el diseño (implementación de referencia
+en un script descartable, misma lógica que esta spec describe — el
+plan de implementación los vuelve a producir desde el código real):
+
+| Caso | Antes (fallback siempre) | Con reposition |
+|---|---|---|
+| facil/4×4 `#e7a34b` | mean\|shiftC\| 0.026 (11/30 en 0) | **0/30 fallback, shiftC=0 siempre** |
+| medio/8×8 `#6b3fa0` (morado) | fallback | **0/30 fallback, shiftC=0 siempre** |
+| medio/8×8 `#d4af37` (oro) | fallback | **0/30 fallback, shiftC=0 siempre** |
+| dificil/8×8 `#e7a34b` | mean\|shiftC\| 0.076 | **sin cambio — 30/30 fallback**, pared geométrica real |
+| medio/5×5 `#e91e8c` (fucsia) | mean\|shiftC\| 0.084 | **sin cambio — 30/30 fallback** |
+| medio/6×6 `#b41919` (rojo tipo manzana) | mean\|shiftC\| 0.046 | **sin cambio — 100/100 fallback** |
+| Muestra estándar (10 hex × 4 tamaños × 3 dificultades × 50 seeds) | — | **fallback en 1.7%** (10/600) |
+| `grid.decidable`, misma muestra | 41 violaciones (línea base sesión anterior) | **33 violaciones** (cap 130) |
+
+Confirmado con un candidato analítico para los tres casos "sin cambio":
+son posiciones donde `findFeasiblePositions` devuelve el set vacío — ni
+siquiera con `cStep` encogido hasta `ABSOLUTE_MIN_STEP_C` cabe la fila en
+ninguna posición del tamaño elegido. No es una limitación del algoritmo
+de búsqueda, es geometría real: fucsia/rojo muy saturados en cartas
+≥5×5 siguen sin cierre posible sin encoger `spreadC` (decisión
+explícitamente fuera de alcance, ver más abajo).
+
+- **`grid.gamutFit` (re-pinear con los números reales de arriba):** los
+  dos casos históricos (`facil/4×4`, `dificil/8×8` con `#e7a34b`) más los
+  tres casos nuevos que reproducen literalmente lo reportado
+  (`fucsia`/`morado`/`oro`/rojo-manzana).
+- **`grid.decidable`:** actualizar el número esperado (33, cap sigue en
+  130 — sin regresión, mejora ligera).
+- **Unit test directo de `findFeasiblePositions`:** `#7d69a8` en
+  medio/6×6 (croma moderado, C0≈0.097) debe devolver 35/36 posiciones
+  feasible — caso "casi todo vale", no "todo vale": incluso un target de
+  croma bajo puede tener posiciones no-feasible cerca del extremo
+  apagado si `C0` está muy cerca de `C_MIN` (`#6a5f52`, C0≈0.025, da
+  18/36 — documentar por qué en el comentario del test, no es un bug).
+  `#ff0000` en dificil/4×4 (C0≈0.258, casi `C_MAX`) debe devolver el set
+  vacío — ejercita la rama de fallback explícitamente.
+- **Fallback rate:** ya medido arriba (1.7% en la muestra estándar) — se
+  documenta el número real en `MATIZ-SPRINTS.md`, no hace falta más
+  trabajo salvo que Miguel lo pida tras ver el número.
 
 ## Fuera de alcance / riesgos aceptados
 
-- El fallback (set vacío) sigue mostrando el residuo ya documentado —
-  este diseño lo minimiza drásticamente, no promete cerrarlo al 100%
-  para combinaciones matemáticamente imposibles (target ya contra la
-  pared del gamut en toda posición del tamaño elegido).
+- **Confirmado con Miguel tras medir:** el fallback (set vacío) sigue
+  mostrando el residuo ya documentado para colores muy saturados
+  (fucsia/rojo intenso) en tamaños ≥5×5 — este diseño lo cierra del todo
+  para varios casos reales (facil/4×4, varios 8×8 medio) y reduce el
+  fallback a 1.7% en una muestra estándar amplia, pero NO cierra el caso
+  específico que Miguel reportó en vivo (fucsia, rojo tipo manzana).
+  Decisión explícita: se implementa así igualmente — mejora real y sin
+  costo de dificultad para la mayoría de casos — y el cierre completo
+  para saturación extrema queda diferido (encoger `spreadC`,
+  reabriendo `DIFFICULTY`), no se persigue en este trabajo.
 - No se toca la distribución de posiciones "target puede caer en
   cualquier celda con igual probabilidad" — para targets muy saturados,
   el target ahora solo puede caer en el subconjunto feasible, que puede
