@@ -147,8 +147,17 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   }
 
   const { shiftL, gamutCeiling } = lBounds;
-  const availableRange = Math.max(0, gamutCeiling - C_MIN);
-  const affordableCStep = availableRange / (size - 1);
+  // C0 es un punto fijo en la fila del objetivo (nunca se desplaza, PRD
+  // §4.3) — el paso máximo que cabe sin shiftC no es simétrico sobre el
+  // rango [C_MIN, gamutCeiling], es el hueco real desde C0 hacia cada
+  // extremo dividido entre cuántas filas hay que recorrer para llegar ahí.
+  // La fórmula anterior, (gamutCeiling-C_MIN)/(size-1), asumía que el rango
+  // podía centrarse donde hiciera falta — ignoraba que C0 está clavado en
+  // la fila tr, así que un target ya cercano al techo de gamut seguía
+  // desbordando hacia shiftC pese a que cStep "cupiera" en el rango total.
+  const fromTop = tr > 0 ? (gamutCeiling - C0) / tr : Infinity;
+  const fromBottom = tr < size - 1 ? (C0 - C_MIN) / (size - 1 - tr) : Infinity;
+  const affordableCStep = Math.min(fromTop, fromBottom);
   const cStep = Math.max(ABSOLUTE_MIN_STEP_C, Math.min(desiredCStep, affordableCStep));
 
   // El croma tampoco puede bajar de C_MIN (fila apagado, row=size-1, igual

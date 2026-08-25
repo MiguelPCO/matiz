@@ -138,24 +138,24 @@ const MAX_ACCEPTABLE_VIOLATIONS = 130;
 // lBoundsFor/buildGridLattice se note de inmediato, no solo "el agregado
 // empeoró un poco".
 describe("grid.gamutFit", () => {
-  it("facil/4x4 con #e7a34b: mean|shiftC| se mantiene mejorado (~0.067, antes ~0.106)", () => {
+  it("facil/4x4 con #e7a34b: mean|shiftC| ~0.026 (antes ~0.067 con lStep, ~0.106 línea base) — cStep posicional casi lo cierra", () => {
     let sum = 0;
     const N = 30;
     for (let seed = 0; seed < N; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 4, difficulty: "facil", targetHex: "#e7a34b" });
       sum += Math.abs(shiftC);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.075);
+    expect(sum / N).toBeLessThanOrEqual(0.035);
   });
 
-  it("dificil/8x8 con #e7a34b: mean|shiftC| documentado como sin cambio (~0.089) — residuo estructural, no regresión si se mantiene", () => {
+  it("dificil/8x8 con #e7a34b: mean|shiftC| ~0.076 (antes ~0.089, sin cambio con lStep) — mejora real pero residuo estructural persiste, fila larga sigue gamut-limitada", () => {
     let sum = 0;
     const N = 30;
     for (let seed = 0; seed < N; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "dificil", targetHex: "#e7a34b" });
       sum += Math.abs(shiftC);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.095);
+    expect(sum / N).toBeLessThanOrEqual(0.085);
   });
 });
 
