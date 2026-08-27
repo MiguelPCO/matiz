@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 const client = new Anthropic();
 const TIMEOUT_MS = 15_000;
 const HEX_INPUT_PATTERN = /^#[0-9a-fA-F]{6}$/;
-const WORD_PATTERN = /^[a-záéíóúñü ]+$/i;
+const WORD_PATTERN = /^[a-záéíóúñü ]+$/;
 
 type ErrorReason = "network" | "invalid" | "timeout";
 
@@ -42,6 +42,14 @@ export async function POST(request: Request) {
       {
         model: "claude-opus-5",
         max_tokens: 16000,
+        // temperature 0 — a diferencia de random-word (que SÍ quiere variar
+        // entre llamadas), aquí todos los jugadores deben ver la misma
+        // palabra el mismo día para el mismo hex. Best-effort: la API no
+        // garantiza determinismo exacto ni con temperature 0, pero reduce
+        // la varianza frente al default. La caché de useDaily.ts (por
+        // dateKey, en localStorage) solo evita repetir la llamada en el
+        // mismo navegador — no sincroniza entre jugadores por sí sola.
+        temperature: 0,
         output_config: { effort: "low" },
         messages: [
           {
