@@ -3,6 +3,7 @@
 interface SegmentedOption<T extends string | number> {
   readonly value: T;
   readonly label: string;
+  readonly disabled?: boolean;
 }
 
 interface SegmentedProps<T extends string | number> {
@@ -29,7 +30,7 @@ export function Segmented<T extends string | number>({
           role="radio"
           aria-checked={opt.value === value}
           onClick={() => onChange(opt.value)}
-          disabled={disabled}
+          disabled={disabled || opt.disabled}
           className={`flex-1 rounded-[var(--radius-panel)] border border-line py-1.5 font-mono text-xs capitalize disabled:opacity-40 ${
             opt.value === value ? "bg-signal text-signal-ink" : "text-text-muted"
           }`}

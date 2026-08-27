@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGame } from "../../hooks/useGame";
 import { extractColor } from "../../lib/extract";
+import { randomWordColor } from "../../lib/random-word";
 import { DIFFICULTY } from "../../lib/types";
 import type { Clue, ClueType, Difficulty, GridSize, Hex } from "../../lib/types";
 import { wordToColor } from "../../lib/word-color";
@@ -17,6 +18,13 @@ import { HowToPlay } from "./HowToPlay";
  * siempre a 4×4/Fácil/Palabra, sin selector — se aprende por éxito. El
  * selector completo solo aparece a partir de la segunda partida
  * (state.hasPlayed, que se activa en la primera ronda que llega a reveal).
+ *
+ * Solo vs. Duelo difieren en quién pone la pista: en Duelo la eliges TÚ
+ * para que la adivine tu rival (secreto solo hasta la Cortina, ver
+ * Sprint 4) — en Solo la vas a adivinar tú mismo, así que si tú mismo la
+ * escribieras ya sabrías la respuesta. Por eso Solo genera la pista al
+ * azar (randomWordColor) en vez de pedirte que la escribas, y nunca
+ * enseña el swatch antes de jugar.
  */
 
 type ClueDraft =
@@ -33,6 +41,12 @@ const DIFFICULTY_OPTIONS = (["facil", "medio", "dificil"] as const).map((v) => (
 const CLUE_TYPE_OPTIONS: readonly { value: ClueType; label: string }[] = [
   { value: "word", label: "Palabra" },
   { value: "image", label: "Imagen" },
+];
+// Solo: sin fuente de imágenes al azar todavía — deshabilitada hasta curar
+// una galería (ver MATIZ-SPRINTS.md).
+const CLUE_TYPE_OPTIONS_SOLO: readonly { value: ClueType; label: string; disabled?: boolean }[] = [
+  { value: "word", label: "Palabra" },
+  { value: "image", label: "Imagen", disabled: true },
 ];
 
 const WORD_ERROR_COPY: Record<"network" | "invalid" | "timeout", string> = {
@@ -58,6 +72,7 @@ function downscaleToDataUrl(img: HTMLImageElement, maxEdge: number): string {
 
 export function Setup() {
   const { state, dispatch } = useGame();
+  const isSolo = state.mode === "solo";
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [clueType, setClueType] = useState<ClueType>("word");
   const [word, setWord] = useState("");
@@ -73,6 +88,28 @@ export function Setup() {
 
   const rival = state.mode === "duel" ? state.players[1 - state.activeIndex] : null;
   const pistaLabel = rival ? `Pista para ${rival.name}` : "Pista";
+
+  // Solo: la pista sale al azar (ver comentario de cabecera). generateRandomClue
+  // es estable (useCallback, sin deps) a propósito: si el efecto dependiera de
+  // draft.status para decidir "solo cuando idle", su propio setDraft("loading")
+  // cambiaría esa dependencia y el efecto se auto-desmontaría a mitad de la
+  // petición (cleanup marca cancelled=true antes de que resuelva el fetch) —
+  // la carta se quedaba colgada en "Generando pista…" para siempre (visto en
+  // vivo). Al no depender de draft.status, el efecto solo corre una vez por
+  // mount; "Reintentar" llama a la misma función directamente.
+  const generateRandomClue = useCallback(async () => {
+    setDraft({ status: "loading" });
+    const result = await randomWordColor();
+    if (!result.ok) {
+      setDraft({ status: "error", reason: result.reason });
+      return;
+    }
+    setDraft({ status: "ready", targetHex: result.hex, word: result.word });
+  }, []);
+
+  useEffect(() => {
+    if (isSolo) generateRandomClue();
+  }, [isSolo, generateRandomClue]);
 
   async function revealWordColor(term: string) {
     const trimmed = term.trim();
@@ -174,111 +211,139 @@ export function Setup() {
         dificultad se bloquean tras la ronda 1 (misma configuración para
         ambos jugadores, PRD §4.8), pero cada jugador elige su propio
         palabra/imagen al poner pista — bloquearlo dejaba al segundo
-        jugador sin poder cambiar de palabra a imagen.
+        jugador sin poder cambiar de palabra a imagen. En solo, "imagen"
+        va deshabilitada (ver CLUE_TYPE_OPTIONS_SOLO) — sin fuente de
+        imágenes al azar todavía.
       */}
       <div>
         <Label className="mb-1.5 block">Tipo de pista</Label>
         <Segmented
-          options={CLUE_TYPE_OPTIONS}
+          options={isSolo ? CLUE_TYPE_OPTIONS_SOLO : CLUE_TYPE_OPTIONS}
           value={clueType}
           onChange={(v: ClueType) => {
             setClueType(v);
-            setDraft({ status: "idle" });
+            if (!isSolo) setDraft({ status: "idle" });
           }}
           aria-label="Tipo de pista"
         />
       </div>
 
-      {clueType === "word" ? (
-        <div key="word" className="flex flex-col gap-2">
-          <Label className="block">{pistaLabel}</Label>
-          <input
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-            placeholder="Palabra (p. ej. óxido)"
-            disabled={isLoading}
-            className="rounded-[var(--radius-panel)] border border-line bg-surface-1 px-3 py-2 font-sans text-sm text-text"
-          />
-          <Button
-            variant="secondary"
-            onClick={() => revealWordColor(word)}
-            disabled={isLoading || word.trim().length === 0}
-          >
-            {isLoading ? "Revelando color…" : "Revelar color"}
-          </Button>
-        </div>
+      {isSolo ? (
+        // Solo: la pista es al azar (ver comentario de cabecera del
+        // componente) — nunca se muestra el swatch antes de jugar, o el
+        // propio jugador vería la respuesta antes de adivinarla.
+        <>
+          {draft.status === "loading" && (
+            <p className="font-sans text-sm text-text-muted">Generando pista…</p>
+          )}
+          {draft.status === "ready" && (
+            <p className="font-sans text-sm text-text-muted">Pista lista.</p>
+          )}
+          {draft.status === "error" && (
+            <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] bg-surface-1 p-3">
+              <p className="font-sans text-xs text-text-muted">
+                {draft.reason === "image" ? "No se pudo leer la imagen." : WORD_ERROR_COPY[draft.reason]}
+              </p>
+              <Button variant="secondary" onClick={() => generateRandomClue()}>
+                Reintentar
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
-        <div key="image" className="flex flex-col gap-2">
-          <Label className="block">{pistaLabel}</Label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileChosen(file);
-            }}
-          />
-          <Button
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-          >
-            {isLoading ? "Leyendo imagen…" : "Elegir imagen"}
-          </Button>
-        </div>
-      )}
+        <>
+          {clueType === "word" ? (
+            <div key="word" className="flex flex-col gap-2">
+              <Label className="block">{pistaLabel}</Label>
+              <input
+                value={word}
+                onChange={(e) => setWord(e.target.value)}
+                placeholder="Palabra (p. ej. óxido)"
+                disabled={isLoading}
+                className="rounded-[var(--radius-panel)] border border-line bg-surface-1 px-3 py-2 font-sans text-sm text-text"
+              />
+              <Button
+                variant="secondary"
+                onClick={() => revealWordColor(word)}
+                disabled={isLoading || word.trim().length === 0}
+              >
+                {isLoading ? "Revelando color…" : "Revelar color"}
+              </Button>
+            </div>
+          ) : (
+            <div key="image" className="flex flex-col gap-2">
+              <Label className="block">{pistaLabel}</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileChosen(file);
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                {isLoading ? "Leyendo imagen…" : "Elegir imagen"}
+              </Button>
+            </div>
+          )}
 
-      {isError && draft.status === "error" && (
-        <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] bg-surface-1 p-3">
-          <p className="font-sans text-xs text-text-muted">
-            {draft.reason === "image"
-              ? "No se pudo leer la imagen."
-              : WORD_ERROR_COPY[draft.reason]}
-          </p>
-          <div className="flex gap-2">
-            {draft.reason === "image" ? (
-              <>
-                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                  Elegir otra imagen
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setClueType("word");
-                    setDraft({ status: "idle" });
-                  }}
-                >
-                  Probar con palabra
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="secondary" onClick={() => revealWordColor(word)}>
-                  Reintentar
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setClueType("image");
-                    setDraft({ status: "idle" });
-                  }}
-                >
-                  Probar con una imagen
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+          {isError && draft.status === "error" && (
+            <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] bg-surface-1 p-3">
+              <p className="font-sans text-xs text-text-muted">
+                {draft.reason === "image"
+                  ? "No se pudo leer la imagen."
+                  : WORD_ERROR_COPY[draft.reason]}
+              </p>
+              <div className="flex gap-2">
+                {draft.reason === "image" ? (
+                  <>
+                    <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                      Elegir otra imagen
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setClueType("word");
+                        setDraft({ status: "idle" });
+                      }}
+                    >
+                      Probar con palabra
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="secondary" onClick={() => revealWordColor(word)}>
+                      Reintentar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setClueType("image");
+                        setDraft({ status: "idle" });
+                      }}
+                    >
+                      Probar con una imagen
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
-      {draft.status === "ready" && (
-        <div
-          className="h-16 w-16 rounded-[var(--radius-swatch)]"
-          style={{ backgroundColor: draft.targetHex }}
-          aria-hidden="true"
-        />
+          {draft.status === "ready" && (
+            <div
+              className="h-16 w-16 rounded-[var(--radius-swatch)]"
+              style={{ backgroundColor: draft.targetHex }}
+              aria-hidden="true"
+            />
+          )}
+        </>
       )}
 
       <Button variant="primary" onClick={handleEmpezar} disabled={draft.status !== "ready"}>
