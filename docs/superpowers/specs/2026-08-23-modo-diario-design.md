@@ -140,15 +140,21 @@ Ruta propia (no pasa por el `switch(state.phase)` de Solo/Duelo). Usa
 
 - `phase: "loading"` — un frame antes de leer `localStorage` (evita
   parpadeo de contenido incorrecto en SSR/hidratación).
-- `phase: "playing"` — mismo layout que `Play.tsx` pero sin `ClueBar`
-  (Diario no tiene pista, decisión confirmada): `ColorCard` +
+- `phase: "playing"` — mismo layout que `Play.tsx`: `ColorCard` +
   `Thermometer` + `HintRow`, botón «Volver» a Home sin confirmación
   (Diario es una sola pantalla, sin Setup previo que perder).
-- `phase: "result"` — reutiliza `Reveal.tsx` (ver cambio abajo) sin la
-  sección de pista. El botón de acción original de `Reveal`
-  (`actionLabel`/`onAction`) se usa para «Compartir resultado» (ver
-  siguiente sección); debajo, un enlace secundario «Volver a inicio» hacia
-  `/`.
+- `phase: "result"` — reutiliza `Reveal.tsx` (ver cambio abajo). El botón
+  de acción original de `Reveal` (`actionLabel`/`onAction`) se usa para
+  «Compartir resultado» (ver siguiente sección); debajo, un enlace
+  secundario «Volver a inicio» hacia `/`.
+
+  > **Nota posterior (2026-08-27):** el texto original de este bullet
+  > decía "sin `ClueBar`"/"sin la sección de pista" — el color del día
+  > sigue siendo puramente determinista por fecha (nada cambia ahí), pero
+  > ahora sí se le pone una palabra-etiqueta encima vía IA inversa, así
+  > que `ClueBar`/el panel "Pista" de `Reveal` SÍ se muestran cuando esa
+  > palabra está disponible. Ver MATIZ-SPRINTS.md § "Diario: palabra-pista
+  > visible".
 
 ## Cambio a componente compartido — `components/game/Reveal.tsx`
 

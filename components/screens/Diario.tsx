@@ -8,6 +8,7 @@ import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
 import { DIFFICULTY } from "../../lib/types";
 import type { HintKind } from "../../lib/types";
+import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
 import { HintRow } from "../game/HintRow";
 import { Reveal } from "../game/Reveal";
@@ -15,8 +16,12 @@ import { Thermometer } from "../game/Thermometer";
 
 /**
  * Diario — ruta propia, no pasa por el switch(state.phase) de Solo/Duelo
- * (ver docs/superpowers/specs/2026-08-23-modo-diario-design.md). Sin pista:
- * no hay ClueBar en juego, ni panel "Pista" en el reveal.
+ * (ver docs/superpowers/specs/2026-08-23-modo-diario-design.md). El color
+ * del día sigue siendo puro/determinista por fecha (lib/daily.ts, sin red);
+ * la palabra-pista es una etiqueta que se le pone DESPUÉS vía IA inversa
+ * (lib/color-word.ts, ver hooks/useDaily.ts) — decorativa, no bloqueante:
+ * si `round.clue.word` está vacío (aún no llegó, o falló) simplemente no se
+ * muestra ClueBar/panel "Pista", el juego funciona igual.
  */
 
 function verdictFor(ring: number): string {
@@ -97,6 +102,7 @@ export function Diario() {
 
       {state.phase === "playing" ? (
         <>
+          {round.clue.word && <ClueBar clue={round.clue} />}
           <ColorCard
             grid={grid}
             guesses={round.guesses}
@@ -118,6 +124,7 @@ export function Diario() {
       ) : (
         <>
           <Reveal
+            clue={round.clue.word ? round.clue : undefined}
             grid={grid}
             guesses={round.guesses}
             best={best}

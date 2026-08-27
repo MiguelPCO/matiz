@@ -14,10 +14,15 @@ import { Segmented } from "../ui/Segmented";
 import { HowToPlay } from "./HowToPlay";
 
 /**
- * S1 — pista, tamaño, dificultad. PRD §7.1.4: la primera partida se juega
- * siempre a 4×4/Fácil/Palabra, sin selector — se aprende por éxito. El
- * selector completo solo aparece a partir de la segunda partida
- * (state.hasPlayed, que se activa en la primera ronda que llega a reveal).
+ * S1 — pista, tamaño, dificultad. El selector de tamaño/dificultad se
+ * muestra siempre en Solo — el onboarding original de PRD §7.1.4 (ocultarlo
+ * en la primera partida, `state.hasPlayed`) generaba confusión: `hasPlayed`
+ * solo vive en memoria (useReducer sin persistencia), así que cualquier
+ * recarga de página se veía como "primera partida" otra vez y el selector
+ * desaparecía sin patrón aparente. Decisión explícita de Miguel (2026-08-27):
+ * revertir esa regla, mostrar el selector siempre. `hasPlayed` se conserva
+ * en el motor (lib/engine.ts) por si se necesita para otra cosa — solo deja
+ * de leerse aquí.
  *
  * Solo vs. Duelo difieren en quién pone la pista: en Duelo la eliges TÚ
  * para que la adivine tu rival (secreto solo hasta la Cortina, ver
@@ -79,12 +84,10 @@ export function Setup() {
   const [draft, setDraft] = useState<ClueDraft>({ status: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Duelo: dos jugadores que ya eligieron el modo no necesitan el
-  // onboarding "primera partida sin selector" (eso es solo para Solo).
-  // El selector se muestra en la ronda 1 y se bloquea desde la ronda 2
-  // en adelante — misma config para ambos jugadores (PRD §4.8).
-  const showPicker =
-    state.mode === "duel" ? state.rounds.length === 0 : state.hasPlayed;
+  // Duelo: el selector se muestra en la ronda 1 y se bloquea desde la
+  // ronda 2 en adelante — misma config para ambos jugadores (PRD §4.8).
+  // Solo: siempre visible (ver comentario de cabecera del componente).
+  const showPicker = state.mode === "duel" ? state.rounds.length === 0 : true;
 
   const rival = state.mode === "duel" ? state.players[1 - state.activeIndex] : null;
   const pistaLabel = rival ? `Pista para ${rival.name}` : "Pista";

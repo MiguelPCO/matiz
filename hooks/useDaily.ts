@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer } from "react";
 import type { Dispatch } from "react";
+import { colorWord } from "../lib/color-word";
 import { deltaE } from "../lib/color";
 import { buildDailyGridSpec, localDateKey } from "../lib/daily";
 import { scoreRound } from "../lib/engine";
@@ -22,6 +23,7 @@ import type { GridSpec, HintKind, Round } from "../lib/types";
 
 const PLACEHOLDER_PLAYER_ID = "daily-player";
 const DAILY_STORAGE_KEY = "matiz-daily-v1";
+const DAILY_WORD_STORAGE_KEY = "matiz-daily-word-v1";
 
 interface DailyStorage {
   readonly date: string;
@@ -47,6 +49,36 @@ function writeCache(dateKey: string, result: DailyResult): void {
   window.localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(payload));
 }
 
+interface DailyWordStorage {
+  readonly date: string;
+  readonly word: string;
+}
+
+// Palabra-pista del día: solo etiqueta el color YA generado por
+// buildDailyGridSpec (lib/daily.ts sigue siendo puramente determinista por
+// fecha, sin dependencia de red para JUGAR) — se pide una vez por fecha vía
+// IA inversa (lib/color-word.ts) y se cachea aparte de DailyStorage, que
+// guarda el resultado de la partida, no la pista. Si falla, la pista
+// simplemente no aparece — no bloquea nada (ver useDaily más abajo).
+function readWordCache(dateKey: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DAILY_WORD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as DailyWordStorage;
+    if (parsed.date !== dateKey) return null;
+    return parsed.word;
+  } catch {
+    return null;
+  }
+}
+
+function writeWordCache(dateKey: string, word: string): void {
+  if (typeof window === "undefined") return;
+  const payload: DailyWordStorage = { date: dateKey, word };
+  window.localStorage.setItem(DAILY_WORD_STORAGE_KEY, JSON.stringify(payload));
+}
+
 export type DailyPhase = "loading" | "playing" | "result";
 
 export interface DailyState {
@@ -59,7 +91,8 @@ export interface DailyState {
 export type DailyAction =
   | { type: "HYDRATE"; cached: DailyResult | null; gridSpec: GridSpec; dateKey: string }
   | { type: "GUESS"; row: number; col: number }
-  | { type: "REQUEST_HINT"; kind: HintKind };
+  | { type: "REQUEST_HINT"; kind: HintKind }
+  | { type: "SET_CLUE_WORD"; word: string };
 
 const initialDailyState: DailyState = { phase: "loading", gridSpec: null, round: null, dateKey: "" };
 
@@ -141,7 +174,10 @@ function dailyReducer(state: DailyState, action: DailyAction): DailyState {
         id: "daily",
         guesserId: PLACEHOLDER_PLAYER_ID,
         setterId: null,
-        // stub solo para satisfacer Round/el cálculo de closeness — jamás se pasa a Reveal (Diario no tiene pista)
+        // word empieza vacío — placeholder hasta que el efecto de abajo la
+        // rellene (vía colorWord + SET_CLUE_WORD) o falle en silencio.
+        // Diario.tsx trata word==="" como "sin pista todavía", nunca la
+        // pasa a ClueBar/Reveal así.
         clue: { type: "word", word: "", targetHex: action.gridSpec.targetHex },
         gridSpec: action.gridSpec,
         guesses: action.cached?.guesses ?? [],
@@ -165,6 +201,10 @@ function dailyReducer(state: DailyState, action: DailyAction): DailyState {
       if (state.phase !== "playing" || !state.round || !state.gridSpec) return state;
       const round = applyDailyHint(state.round, state.gridSpec, action.kind);
       return { ...state, round };
+    }
+    case "SET_CLUE_WORD": {
+      if (!state.round) return state;
+      return { ...state, round: { ...state.round, clue: { ...state.round.clue, word: action.word } } };
     }
     default:
       return state;
@@ -196,6 +236,30 @@ export function useDaily(): { state: DailyState; dispatch: Dispatch<DailyAction>
       score: round.score ?? 0,
     });
   }, [state.phase, state.round, state.dateKey]);
+
+  // Palabra-pista: no bloquea nada (lib/daily.ts sigue generando el color
+  // en puro, sin red) — si falla, round.clue.word se queda en "" y
+  // Diario.tsx simplemente no muestra pista, como hasta ahora.
+  useEffect(() => {
+    const gridSpec = state.gridSpec;
+    if (!gridSpec || !state.dateKey || state.round?.clue.word) return;
+
+    const cachedWord = readWordCache(state.dateKey);
+    if (cachedWord) {
+      dispatch({ type: "SET_CLUE_WORD", word: cachedWord });
+      return;
+    }
+
+    let cancelled = false;
+    colorWord(gridSpec.targetHex).then((result) => {
+      if (cancelled || !result.ok) return;
+      writeWordCache(state.dateKey, result.word);
+      dispatch({ type: "SET_CLUE_WORD", word: result.word });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.gridSpec, state.dateKey, state.round?.clue.word]);
 
   return { state, dispatch };
 }
