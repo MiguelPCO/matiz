@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deltaE, hexToOklch } from "./color";
-import { buildGrid, buildGridLattice, findFeasiblePositions } from "./grid";
+import { buildGrid, buildGridLattice, computeLatticeParams, findFeasiblePositions, findLeastShiftPositions } from "./grid";
 import { ABSOLUTE_MIN_STEP_C, DIFFICULTY, MIN_STEP_C, MIN_STEP_L } from "./types";
 import type { Difficulty, GridSize, GridSpec } from "./types";
 
@@ -172,42 +172,44 @@ describe("grid.gamutFit", () => {
     }
   });
 
-  // Los siguientes tres casos NO se cierran — confirmado analíticamente:
-  // findFeasiblePositions devuelve el set vacío para estos, ni siquiera
-  // encogiendo cStep hasta ABSOLUTE_MIN_STEP_C cabe la fila en ninguna
-  // posición del tamaño elegido. Es geometría real (gamut sRGB es angosto
-  // en magenta/rojo muy saturado en casi todo L), no una limitación del
-  // algoritmo de búsqueda. Cerrarlo del todo exige encoger spreadC —
-  // decisión de balance que reabre DIFFICULTY, diferida (ver MATIZ-SPRINTS.md).
+  // Los siguientes tres casos NO llegan a shiftC=0 — confirmado
+  // analíticamente: findFeasiblePositions devuelve el set vacío, ni
+  // siquiera encogiendo cStep hasta ABSOLUTE_MIN_STEP_C cabe la fila en
+  // NINGUNA posición del tamaño elegido (geometría real: gamut sRGB angosto
+  // en magenta/rojo muy saturado en casi todo L). Cerrarlo del todo exige
+  // encoger spreadC — decisión de balance que reabre DIFFICULTY, diferida
+  // (ver MATIZ-SPRINTS.md). Pero desde findLeastShiftPositions (posición de
+  // menor shift total, no RNG puro) el shiftC real cae 3x-10x frente al fix
+  // anterior — sigue delatándose por contraste, mucho menos que antes.
 
-  it("dificil/8x8 con #e7a34b: pared geométrica real, reposition no cierra este caso (mean|shiftC| ~0.076, sin cambio respecto al fix anterior)", () => {
+  it("dificil/8x8 con #e7a34b: pared geométrica real, pero findLeastShiftPositions baja mean|shiftC| de ~0.076 a ~0.017 (4.5x)", () => {
     let sum = 0;
     const N = 30;
     for (let seed = 0; seed < N; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 8, difficulty: "dificil", targetHex: "#e7a34b" });
       sum += Math.abs(shiftC);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.085);
+    expect(sum / N).toBeLessThanOrEqual(0.025);
   });
 
-  it("medio/5x5 con #e91e8c (fucsia — caso reportado en vivo): pared geométrica real, sin cambio (mean|shiftC| ~0.084)", () => {
+  it("medio/5x5 con #e91e8c (fucsia — caso reportado en vivo): findLeastShiftPositions baja mean|shiftC| de ~0.084 a ~0.031 (2.7x)", () => {
     let sum = 0;
     const N = 30;
     for (let seed = 0; seed < N; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 5, difficulty: "medio", targetHex: "#e91e8c" });
       sum += Math.abs(shiftC);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.095);
+    expect(sum / N).toBeLessThanOrEqual(0.04);
   });
 
-  it("medio/6x6 con #b41919 (rojo tipo manzana — el caso reportado en vivo originalmente): pared geométrica real, sin cambio (mean|shiftC| ~0.046)", () => {
+  it("medio/6x6 con #b41919 (rojo tipo manzana — el caso reportado en vivo originalmente): findLeastShiftPositions baja mean|shiftC| de ~0.046 a ~0.005 (10x)", () => {
     let sum = 0;
     const N = 100;
     for (let seed = 0; seed < N; seed++) {
       const { shiftC } = buildGridLattice({ seed, size: 6, difficulty: "medio", targetHex: "#b41919" });
       sum += Math.abs(shiftC);
     }
-    expect(sum / N).toBeLessThanOrEqual(0.055);
+    expect(sum / N).toBeLessThanOrEqual(0.01);
   });
 });
 
@@ -288,6 +290,54 @@ describe("grid.findFeasiblePositions", () => {
       seenPositions.add(`${lattice.target.row},${lattice.target.col}`);
     }
     expect(seenPositions.size).toBeGreaterThan(1);
+  });
+});
+
+describe("grid.findLeastShiftPositions", () => {
+  it("nunca vacío, y siempre coincide con el mínimo real de |shiftL|+|shiftC| sobre las size² posiciones (barrido manual)", () => {
+    const cases: readonly { hex: string; size: GridSize; difficulty: Difficulty }[] = [
+      { hex: "#ff0000", size: 4, difficulty: "dificil" },
+      { hex: "#e7a34b", size: 8, difficulty: "dificil" },
+      { hex: "#e91e8c", size: 5, difficulty: "medio" },
+      { hex: "#b41919", size: 6, difficulty: "medio" },
+    ];
+    for (const { hex, size, difficulty } of cases) {
+      const { L: L0, C: C0, H } = hexToOklch(hex);
+      const cfg = DIFFICULTY[difficulty];
+      expect(findFeasiblePositions(L0, C0, H, size, cfg).length).toBe(0); // precondición: sí ejercita el fallback
+
+      const least = findLeastShiftPositions(L0, C0, H, size, cfg);
+      expect(least.length).toBeGreaterThan(0);
+
+      let trueMin = Infinity;
+      for (let tc = 0; tc < size; tc++) {
+        for (let tr = 0; tr < size; tr++) {
+          const { shiftL, shiftC } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
+          trueMin = Math.min(trueMin, Math.abs(shiftL) + Math.abs(shiftC));
+        }
+      }
+      for (const { tr, tc } of least) {
+        const { shiftL, shiftC } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
+        expect(Math.abs(shiftL) + Math.abs(shiftC)).toBeCloseTo(trueMin, 9);
+      }
+    }
+  });
+
+  // Mismo motivo que el test de wiring para findFeasiblePositions más arriba:
+  // nada más en la suite fallaría si buildGridLattice ignorase
+  // findLeastShiftPositions y usara tr=0,tc=0 fijo en el fallback.
+  it("buildGridLattice's chosen target is always a member of findLeastShiftPositions' output, when findFeasiblePositions is empty", () => {
+    const spec: GridSpec = { seed: 0, size: 8, difficulty: "dificil", targetHex: "#e7a34b" };
+    const { L: L0, C: C0, H } = hexToOklch(spec.targetHex);
+    const cfg = DIFFICULTY[spec.difficulty];
+    expect(findFeasiblePositions(L0, C0, H, spec.size, cfg).length).toBe(0);
+
+    const least = findLeastShiftPositions(L0, C0, H, spec.size, cfg);
+    for (let seed = 0; seed < 30; seed++) {
+      const lattice = buildGridLattice({ ...spec, seed });
+      const isMember = least.some((p) => p.tr === lattice.target.row && p.tc === lattice.target.col);
+      expect(isMember).toBe(true);
+    }
   });
 });
 

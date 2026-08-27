@@ -89,10 +89,11 @@ interface LatticeParams {
 
 /**
  * El ajuste de gamut para UNA posición candidata del target. Extraída de
- * buildGridLattice para que findFeasiblePositions (más abajo) pueda
- * evaluarla en cualquier (tr, tc), no solo en la que el RNG dibujó.
+ * buildGridLattice para que findFeasiblePositions y findLeastShiftPositions
+ * (más abajo) puedan evaluarla en cualquier (tr, tc), no solo en la que el
+ * RNG dibujó.
  */
-function computeLatticeParams(
+export function computeLatticeParams(
   tr: number,
   tc: number,
   L0: number,
@@ -207,6 +208,38 @@ export function findFeasiblePositions(
   return feasible;
 }
 
+/**
+ * Cuando ninguna posición es 100% feasible (findFeasiblePositions devuelve
+ * vacío — pared geométrica real del gamut, ver MATIZ-SPRINTS.md § Deuda
+ * técnica conocida), las posiciones que exigen el MENOR desplazamiento total
+ * (|shiftL| + |shiftC|) en vez de caer a RNG puro, que puede aterrizar en la
+ * peor posición posible tan fácilmente como en la mejor. Mismo coste que
+ * findFeasiblePositions (ya evalúa las size² posiciones); nunca vacío.
+ */
+export function findLeastShiftPositions(
+  L0: number,
+  C0: number,
+  H: number,
+  size: GridSize,
+  cfg: DifficultyConfig,
+): FeasiblePosition[] {
+  let best = Infinity;
+  let bestPositions: FeasiblePosition[] = [];
+  for (let tc = 0; tc < size; tc++) {
+    for (let tr = 0; tr < size; tr++) {
+      const { shiftL, shiftC } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
+      const total = Math.abs(shiftL) + Math.abs(shiftC);
+      if (total < best - 1e-9) {
+        best = total;
+        bestPositions = [{ tr, tc }];
+      } else if (total < best + 1e-9) {
+        bestPositions.push({ tr, tc });
+      }
+    }
+  }
+  return bestPositions;
+}
+
 export function buildGridLattice(spec: GridSpec): GridLattice {
   const { size, difficulty, targetHex, seed } = spec;
   const next = rng(seed);
@@ -218,20 +251,16 @@ export function buildGridLattice(spec: GridSpec): GridLattice {
   // carta, entre las posiciones donde el ajuste de gamut ya da shift
   // cero (ver findFeasiblePositions) — en vez de fijarla por RNG puro y
   // forzar al resto de la carta a encajar alrededor después. Si ninguna
-  // posición sirve (target muy saturado, carta pequeña), cae al RNG puro
-  // de siempre: mismo comportamiento que hoy en producción, nunca peor.
+  // posición sirve (target muy saturado, carta pequeña), se usan las de
+  // menor desplazamiento total (ver findLeastShiftPositions) en vez de RNG
+  // puro — reduce cuánto se delata el target por contraste, aunque no lo
+  // elimina del todo (pared geométrica real, no un bug de selección).
   const feasible = findFeasiblePositions(L0, C0, H, size, cfg);
-  let tr: number;
-  let tc: number;
-  if (feasible.length > 0) {
-    const idx = Math.floor(next() * feasible.length);
-    const picked = feasible[idx] ?? feasible[0] ?? { tr: 0, tc: 0 };
-    tr = picked.tr;
-    tc = picked.tc;
-  } else {
-    tr = Math.floor(next() * size);
-    tc = Math.floor(next() * size);
-  }
+  const candidates = feasible.length > 0 ? feasible : findLeastShiftPositions(L0, C0, H, size, cfg);
+  const idx = Math.floor(next() * candidates.length);
+  const picked = candidates[idx] ?? candidates[0] ?? { tr: 0, tc: 0 };
+  const tr = picked.tr;
+  const tc = picked.tc;
 
   const { shiftL, shiftC, lStep, cStep } = computeLatticeParams(tr, tc, L0, C0, H, size, cfg);
 

@@ -190,6 +190,12 @@ plan de implementación los vuelve a producir desde el código real):
 | Muestra estándar (10 hex × 4 tamaños × 3 dificultades × 50 seeds) | — | **fallback en 1.7%** (10/600) |
 | `grid.decidable`, misma muestra | 41 violaciones (línea base sesión anterior) | **33 violaciones** (cap 130) |
 
+> **Nota posterior (2026-08-27):** los tres casos "sin cambio" de la tabla
+> quedaron mejorados (no cerrados del todo) por un fix de seguimiento —
+> `findLeastShiftPositions` en `lib/grid.ts`, ver MATIZ-SPRINTS.md § Cuarto
+> fix. Esta tabla queda como registro histórico de esta spec, no como
+> estado actual.
+
 Confirmado con un candidato analítico para los tres casos "sin cambio":
 son posiciones donde `findFeasiblePositions` devuelve el set vacío — ni
 siquiera con `cStep` encogido hasta `ABSOLUTE_MIN_STEP_C` cabe la fila en

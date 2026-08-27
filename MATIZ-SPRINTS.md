@@ -269,6 +269,15 @@ Peor: `dificil/5×5` con `targetHex = "#e7a34b"` (el ámbar de marca del propio 
 
 **Decisión explícita con Miguel:** se implementa así de todas formas — mejora real, gratuita en dificultad, para la mayoría de casos — y el cierre completo para saturación extrema sigue diferido (encogería `spreadC`, reabriendo `DIFFICULTY`, PRD cerrado). No se persigue en este trabajo.
 
+**Cuarto fix aplicado (branch `target-argmin-shift`, 2026-08-27), reportado por Miguel con capturas en vivo de "rosa"/"manzana"/"fucsia"/"oro"/"morado":** los tres casos "NO cierra" de arriba seguían cayendo a posición **aleatoria** dentro del fallback (`findFeasiblePositions` vacío ⟹ `tr`/`tc` por RNG puro) — podía aterrizar en la peor posición posible tan fácil como en la mejor. Nueva función `findLeastShiftPositions` (`lib/grid.ts`) reutiliza `computeLatticeParams` (ahora exportada) para escanear las mismas `size²` posiciones que ya evalúa `findFeasiblePositions`, y devuelve las de **menor `|shiftL|+|shiftC|` total** — sin RNG, sin tocar `DIFFICULTY`. `buildGridLattice` la usa como candidatas del fallback en vez de sortear `tr`/`tc` sueltos.
+
+Medido sobre los tres casos exactos de arriba (mismos hex, mismos seeds):
+- **dificil/8×8 `#e7a34b`:** mean `|shiftC|` 0.076 → **0.017** (4.5x).
+- **medio/5×5 `#e91e8c` (fucsia):** mean `|shiftC|` 0.084 → **0.031** (2.7x).
+- **medio/6×6 `#b41919` (rojo tipo manzana):** mean `|shiftC|` 0.046 → **0.0045** (10x).
+
+Sigue sin llegar a `shiftC=0` exacto para estos tres — es la misma pared geométrica real (gamut sRGB angosto en magenta/rojo saturado), no reabre `DIFFICULTY`. Pero el residuo que se "delata por contraste" baja de orden-de-magnitud a apenas perceptible en la mayoría de casos. Tests actualizados en `lib/grid.test.ts` (`grid.gamutFit`, nuevo `grid.findLeastShiftPositions`) con los números reales medidos arriba.
+
 **`hooks/useDaily.ts` duplica a mano las fórmulas de puntuación de `lib/engine.ts`.** `applyDailyGuess`/`applyDailyHint` copian línea por línea `applyGuess`/`applyHint` (documentado en el comentario de cabecera de ambos archivos) porque esas dos funciones no están exportadas y están atadas a la forma de `GameState`, no de `Round`. Un cambio futuro en la fórmula de puntuación o de pistas de Solo/Duelo tiene que acordarse de tocar también `useDaily.ts`, o Diario divergerá en silencio de Solo/Duelo. Sin test de contrato entre los dos que lo impida hoy.
 
 ---
