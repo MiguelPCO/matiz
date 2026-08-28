@@ -1,3 +1,4 @@
+import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { requireEnv } from "./supabase";
@@ -8,14 +9,18 @@ import { requireEnv } from "./supabase";
  * su propio archivo (separado de lib/supabase.ts) porque importa
  * next/headers, que solo puede aparecer en código server-only — si
  * compartiera archivo con las factories de cliente, Turbopack arrastraría
- * next/headers al bundle de cliente y pnpm build fallaría. El login es
- * opcional: si Miguel no ha creado el proyecto Supabase todavía,
+ * next/headers al bundle de cliente y pnpm build fallaría. El `import
+ * "server-only"` de arriba convierte cualquier import accidental desde un
+ * componente cliente en un error explícito de build, en vez de repetir en
+ * silencio ese mismo bug.
+ *
+ * El login es opcional: si Miguel no ha creado el proyecto Supabase todavía,
  * isSupabaseConfigured() (en lib/supabase.ts) es false y NINGÚN llamador
  * debe crear un cliente — createServerSupabaseClient() lanza si se llama sin
- * las env vars. hooks/useSupabaseAuth.ts y components/screens/Diario.tsx
- * comprueban isSupabaseConfigured() antes de tocar cualquiera de las dos
- * factories, así que ese lanzamiento nunca ocurre en la práctica — es un
- * guardrail, no el mecanismo principal.
+ * las env vars. El único llamador de esta factory es
+ * app/auth/callback/route.ts, que comprueba isSupabaseConfigured() antes de
+ * construir nada, así que ese lanzamiento nunca ocurre en la práctica — es
+ * un guardrail, no el mecanismo principal.
  */
 
 export async function createServerSupabaseClient() {
