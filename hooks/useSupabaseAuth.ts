@@ -1,0 +1,64 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createBrowserSupabaseClient, isSupabaseConfigured } from "../lib/supabase";
+
+/**
+ * Estado de sesión Supabase Auth (Google OAuth) — ver
+ * docs/superpowers/specs/2026-08-28-diario-account-sync-design.md. Login
+ * opcional: si isSupabaseConfigured() es false (Miguel no ha creado el
+ * proyecto Supabase todavía), este hook nunca toca el SDK — se queda en
+ * "signed-out" para siempre y signInWithGoogle/signOut son no-ops. Eso deja
+ * jugar Diario en local exactamente igual que hoy, sin runtime error por
+ * env vars ausentes.
+ */
+
+export interface AuthState {
+  readonly status: "loading" | "signed-out" | "signed-in";
+  readonly userId: string | null;
+}
+
+const SIGNED_OUT: AuthState = { status: "signed-out", userId: null };
+
+export function useSupabaseAuth(): {
+  readonly auth: AuthState;
+  readonly signInWithGoogle: () => void;
+  readonly signOut: () => void;
+} {
+  const configured = isSupabaseConfigured();
+  const [auth, setAuth] = useState<AuthState>(configured ? { status: "loading", userId: null } : SIGNED_OUT);
+  const supabase = useMemo(() => (configured ? createBrowserSupabaseClient() : null), [configured]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    supabase.auth.getSession().then(({ data }) => {
+      setAuth(
+        data.session
+          ? { status: "signed-in", userId: data.session.user.id }
+          : SIGNED_OUT,
+      );
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuth(session ? { status: "signed-in", userId: session.user.id } : SIGNED_OUT);
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, [supabase]);
+
+  const signInWithGoogle = useCallback(() => {
+    if (!supabase) return;
+    supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }, [supabase]);
+
+  const signOut = useCallback(() => {
+    if (!supabase) return;
+    supabase.auth.signOut();
+  }, [supabase]);
+
+  return { auth, signInWithGoogle, signOut };
+}
