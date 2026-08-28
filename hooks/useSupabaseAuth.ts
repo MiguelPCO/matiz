@@ -32,13 +32,20 @@ export function useSupabaseAuth(): {
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getSession().then(({ data }) => {
-      setAuth(
-        data.session
-          ? { status: "signed-in", userId: data.session.user.id }
-          : SIGNED_OUT,
-      );
-    });
+    // Segundo argumento no-op en todos los .then de este archivo: misma
+    // disciplina que hooks/useDaily.ts — nada de red lanza hacia la UI, ni
+    // siquiera como unhandled rejection. Si getSession falla, el estado se
+    // queda como "signed-out" y Diario sigue jugándose en local.
+    supabase.auth.getSession().then(
+      ({ data }) => {
+        setAuth(
+          data.session
+            ? { status: "signed-in", userId: data.session.user.id }
+            : SIGNED_OUT,
+        );
+      },
+      () => setAuth(SIGNED_OUT),
+    );
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuth(session ? { status: "signed-in", userId: session.user.id } : SIGNED_OUT);
@@ -49,15 +56,17 @@ export function useSupabaseAuth(): {
 
   const signInWithGoogle = useCallback(() => {
     if (!supabase) return;
-    supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
+    supabase.auth
+      .signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+      .then(() => {}, () => {});
   }, [supabase]);
 
   const signOut = useCallback(() => {
     if (!supabase) return;
-    supabase.auth.signOut();
+    supabase.auth.signOut().then(() => {}, () => {});
   }, [supabase]);
 
   return { auth, signInWithGoogle, signOut };

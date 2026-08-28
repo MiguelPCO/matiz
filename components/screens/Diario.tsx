@@ -108,11 +108,28 @@ export function Diario() {
         </span>
         <div className="flex items-center gap-2">
           {isSupabaseConfigured() && (
+            // auth.status === "loading" (getSession aún resolviendo, p. ej.
+            // justo al volver del callback de Google) deja el botón
+            // deshabilitado y sin handler: pulsarlo ahí dispararía un SEGUNDO
+            // redirect de OAuth encima del que acaba de completar.
             <button
               type="button"
-              onClick={auth.status === "signed-in" ? signOut : signInWithGoogle}
-              aria-label={auth.status === "signed-in" ? "Cerrar sesión" : "Iniciar sesión con Google"}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+              onClick={
+                auth.status === "loading"
+                  ? undefined
+                  : auth.status === "signed-in"
+                    ? signOut
+                    : signInWithGoogle
+              }
+              disabled={auth.status === "loading"}
+              aria-label={
+                auth.status === "loading"
+                  ? "Cargando sesión"
+                  : auth.status === "signed-in"
+                    ? "Cerrar sesión"
+                    : "Iniciar sesión con Google"
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted disabled:opacity-40"
             >
               {auth.status === "signed-in" ? "◐" : "○"}
             </button>
