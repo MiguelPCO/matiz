@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#14161A",
+  themeColor: "#F4F5F6",
 };
 
 export default function RootLayout({
@@ -37,10 +37,11 @@ export default function RootLayout({
       <head>
         <script
           // Aplica el tema guardado antes del primer paint para evitar
-          // flash oscuro→claro en pantallas de chrome (Home/Setup).
+          // flash claro→oscuro en pantallas de chrome (Home/Setup) cuando
+          // hay un tema oscuro guardado — el default sin guardar es claro.
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('matiz-theme');document.documentElement.dataset.theme=t==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}",
+              "try{var t=localStorage.getItem('matiz-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}",
           }}
         />
       </head>

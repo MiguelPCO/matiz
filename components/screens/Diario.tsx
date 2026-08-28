@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useDaily } from "../../hooks/useDaily";
+import { useTheme } from "../../hooks/useTheme";
 import { buildShareText } from "../../lib/daily";
 import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
@@ -33,6 +34,7 @@ function verdictFor(ring: number): string {
 
 export function Diario() {
   const { state, dispatch } = useDaily();
+  const [theme, toggleTheme] = useTheme();
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,7 +42,7 @@ export function Diario() {
 
   if (state.phase === "loading" || !state.round || !grid) {
     return (
-      <main data-theme="dark" className="flex min-h-dvh items-center justify-center bg-surface-0">
+      <main className="flex min-h-dvh items-center justify-center bg-surface-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
           Cargando el matiz de hoy…
         </p>
@@ -87,10 +89,7 @@ export function Diario() {
   }
 
   return (
-    <div
-      data-theme="dark"
-      className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6"
-    >
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6">
       <div className="flex w-full max-w-xs items-center justify-between">
         <Link href="/" aria-label="Volver" className="font-mono text-lg text-text-muted">
           ←
@@ -98,18 +97,30 @@ export function Diario() {
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
           Diario · {state.dateKey}
         </span>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+        >
+          {theme === "dark" ? "☀" : "☾"}
+        </button>
       </div>
 
       {state.phase === "playing" ? (
         <>
           {round.clue.word && <ClueBar clue={round.clue} />}
-          <ColorCard
-            grid={grid}
-            guesses={round.guesses}
-            disabled={false}
-            revealTarget={false}
-            onTap={handleTap}
-          />
+          {/* Solo el gradiente de color queda oscuro siempre (PRD §5.2); el
+              resto de la pantalla sigue el tema claro/oscuro normal. */}
+          <div data-theme="dark" className="w-full max-w-xs rounded-[var(--radius-frame)] bg-surface-0 p-3">
+            <ColorCard
+              grid={grid}
+              guesses={round.guesses}
+              disabled={false}
+              revealTarget={false}
+              onTap={handleTap}
+            />
+          </div>
           <div className="w-full max-w-xs">
             <Thermometer closeness={lastGuess?.closeness ?? null} />
           </div>

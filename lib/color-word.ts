@@ -15,13 +15,13 @@ function reasonFrom(body: unknown): "network" | "invalid" | "timeout" {
   return error === "timeout" || error === "invalid" ? error : "network";
 }
 
-export async function colorWord(hex: Hex): Promise<ColorWordResult> {
+export async function colorWord(hex: Hex, excludeWord?: string): Promise<ColorWordResult> {
   let res: Response;
   try {
     res = await fetch("/api/color-word", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hex }),
+      body: JSON.stringify({ hex, excludeWord }),
     });
   } catch {
     return { ok: false, reason: "network" };

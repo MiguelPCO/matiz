@@ -6,6 +6,10 @@ import { NextResponse } from "next/server";
  * para Diario (lib/daily.ts), donde el color del día sale de matemática
  * pura sobre la fecha, sin palabra asociada. Esto le pone una etiqueta
  * legible al color YA generado, no al revés: nunca decide el color.
+ *
+ * También reutilizada por la pista extra del último tiro en Solo
+ * (Play.tsx) — ahí se pasa excludeWord para no repetir la palabra de la
+ * pista original.
  */
 
 const client = new Anthropic();
@@ -34,6 +38,13 @@ export async function POST(request: Request) {
     return errorResponse("invalid", 400);
   }
 
+  const excludeWordRaw =
+    typeof body === "object" && body !== null && "excludeWord" in body
+      ? (body as { excludeWord: unknown }).excludeWord
+      : null;
+  const excludeWord =
+    typeof excludeWordRaw === "string" && excludeWordRaw.trim() ? excludeWordRaw.trim() : null;
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -54,7 +65,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "user",
-            content: `Eres experto en color. Para el hex ${hex}, da UNA palabra o concepto cotidiano en español (objeto, fruta, animal, material...) cuyo color real y prototípico sea el más parecido. Responde ÚNICAMENTE con esa palabra, en minúsculas, sin puntuación ni explicación.`,
+            content: `Eres experto en color. Para el hex ${hex}, da UNA palabra o concepto cotidiano en español (objeto, fruta, animal, material...) cuyo color real y prototípico sea el más parecido.${excludeWord ? ` Debe ser DISTINTA de "${excludeWord}".` : ""} Responde ÚNICAMENTE con esa palabra, en minúsculas, sin puntuación ni explicación.`,
           },
         ],
       },

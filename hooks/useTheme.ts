@@ -5,7 +5,7 @@ export type Theme = "dark" | "light";
 const STORAGE_KEY = "matiz-theme";
 
 export function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme;

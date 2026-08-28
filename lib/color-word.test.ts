@@ -45,6 +45,15 @@ describe("color-word.colorWord", () => {
     expect(result).toEqual({ ok: false, reason: "timeout" });
   });
 
+  it("envía excludeWord en el body cuando se pasa", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(200, { word: "cielo" }));
+    await colorWord("#3a6ea5", "azul");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/color-word",
+      expect.objectContaining({ body: JSON.stringify({ hex: "#3a6ea5", excludeWord: "azul" }) }),
+    );
+  });
+
   it("respuesta ok sin word utilizable es 'invalid'", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(200, {}));
     const result = await colorWord("#b7410e");

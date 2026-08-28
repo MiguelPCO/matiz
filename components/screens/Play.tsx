@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
+import { colorWord } from "../../lib/color-word";
 import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
-import { DIFFICULTY } from "../../lib/types";
+import { DIFFICULTY, MAX_GUESSES } from "../../lib/types";
 import type { HintKind } from "../../lib/types";
 import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
@@ -24,9 +25,16 @@ function verdictFor(ring: number): string {
   return "Ese matiz engaña.";
 }
 
+type ExtraHintState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; word: string }
+  | { status: "error" };
+
 export function Play() {
   const { state, dispatch } = useGame();
   const [confirmingExit, setConfirmingExit] = useState(false);
+  const [extraHint, setExtraHint] = useState<ExtraHintState>({ status: "idle" });
   const round = state.currentRound !== null ? state.rounds[state.currentRound] : null;
 
   // round.gridSpec no cambia de referencia entre GUESS/REQUEST_HINT (el
@@ -35,6 +43,27 @@ export function Play() {
   // cada tiro.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const grid = useMemo(() => (round ? buildGrid(round.gridSpec) : null), [round?.gridSpec]);
+
+  // Última bala en solo: pista extra gratis (una palabra distinta a la
+  // original) para ayudar a acertar el último tiro. No cuenta como Hint del
+  // motor (sin coste de puntos, sin pasar por REQUEST_HINT) — es un rescate
+  // de UI, no una pista comprada. `onLastGuess` es el único dep real del
+  // efecto: dispara una sola vez al pasar de false→true dentro de la ronda,
+  // nunca se re-dispara por su propio setExtraHint (evita el bug de
+  // auto-cancelación que ya se dio en Setup.tsx con este mismo patrón).
+  const onLastGuess =
+    state.mode === "solo" && round?.status === "playing" && round.guesses.length === MAX_GUESSES - 1;
+
+  const fetchExtraHint = useCallback(async (targetHex: string, excludeWord: string | undefined) => {
+    setExtraHint({ status: "loading" });
+    const result = await colorWord(targetHex, excludeWord);
+    setExtraHint(result.ok ? { status: "ready", word: result.word } : { status: "error" });
+  }, []);
+
+  useEffect(() => {
+    if (onLastGuess && round) fetchExtraHint(round.clue.targetHex, round.clue.word);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onLastGuess, fetchExtraHint]);
 
   if (!round || !grid) return null;
 
@@ -51,10 +80,7 @@ export function Play() {
   }
 
   return (
-    <div
-      data-theme="dark"
-      className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6"
-    >
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6">
       <div className="flex w-full max-w-xs items-center justify-between">
         {!confirmingExit ? (
           <button
@@ -89,13 +115,18 @@ export function Play() {
       {isPlaying ? (
         <>
           <ClueBar clue={round.clue} />
-          <ColorCard
-            grid={grid}
-            guesses={round.guesses}
-            disabled={false}
-            revealTarget={false}
-            onTap={handleTap}
-          />
+          {/* Solo el gradiente de color queda oscuro siempre (PRD §5.2 —
+              fondo neutro necesario para juzgar color sin interferencia);
+              el resto de la pantalla sigue el tema claro/oscuro normal. */}
+          <div data-theme="dark" className="w-full max-w-xs rounded-[var(--radius-frame)] bg-surface-0 p-3">
+            <ColorCard
+              grid={grid}
+              guesses={round.guesses}
+              disabled={false}
+              revealTarget={false}
+              onTap={handleTap}
+            />
+          </div>
           <div className="w-full max-w-xs">
             <Thermometer closeness={lastGuess?.closeness ?? null} />
           </div>
@@ -106,6 +137,18 @@ export function Play() {
             disabled={!isPlaying}
             onRequestHint={handleHint}
           />
+          {onLastGuess && extraHint.status !== "idle" && (
+            <div className="w-full max-w-xs rounded-[var(--radius-panel)] bg-surface-1 p-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
+                Última pista
+              </span>
+              {extraHint.status === "ready" ? (
+                <p className="mt-1 font-sans text-lg text-text">{extraHint.word}</p>
+              ) : extraHint.status === "loading" ? (
+                <p className="mt-1 font-sans text-sm text-text-muted">Buscando pista…</p>
+              ) : null}
+            </div>
+          )}
         </>
       ) : (
         <Reveal

@@ -16,10 +16,14 @@ function reasonFrom(body: unknown): "network" | "invalid" | "timeout" {
   return error === "timeout" || error === "invalid" ? error : "network";
 }
 
-export async function randomWordColor(): Promise<RandomWordColorResult> {
+export async function randomWordColor(excludeWord?: string): Promise<RandomWordColorResult> {
   let res: Response;
   try {
-    res = await fetch("/api/random-word", { method: "POST" });
+    res = await fetch("/api/random-word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ excludeWord }),
+    });
   } catch {
     return { ok: false, reason: "network" };
   }

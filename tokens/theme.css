@@ -21,13 +21,15 @@
 }
 
 /*
- * Tema claro/oscuro — SOLO para pantallas de "chrome" (Home, Setup,
- * HowToPlay, Curtain, Scoreboard). Nunca debe alcanzar la grilla de
- * juego (ColorCard/Swatch/Reveal/Thermometer, montadas en Play.tsx y
- * Diario.tsx): esas pantallas fuerzan data-theme="dark" en su raíz
- * para no romper la calibración de dificultad ni introducir contraste
- * simultáneo sobre los swatches (PRD §5.2 — el fondo neutro oscuro es
- * la condición para poder juzgar color, no una decisión estética).
+ * Tema claro/oscuro — alcanza toda la app (Home, Setup, HowToPlay, Curtain,
+ * Scoreboard, Play, Diario). La única excepción es la propia grilla de
+ * color (ColorCard/Swatch, dentro de Play.tsx/Reveal.tsx/Diario.tsx): esa
+ * carta se envuelve en su propio data-theme="dark" fijo (--radius-frame),
+ * nunca sigue el toggle, para no romper la calibración de dificultad ni
+ * introducir contraste simultáneo sobre los swatches (PRD §5.2 — el fondo
+ * neutro oscuro es la condición para poder juzgar color, no una decisión
+ * estética). Todo lo demás en esas pantallas (pista, termómetro, pistas de
+ * texto, botones) sí sigue el tema normal.
  */
 [data-theme="dark"] {
   --color-surface-0: oklch(0.18 0.006 255);

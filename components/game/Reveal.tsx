@@ -204,7 +204,11 @@ export function Reveal({
         </div>
       ))}
 
-      <ColorCard grid={grid} guesses={guesses} disabled revealTarget onTap={() => {}} />
+      {/* Solo el gradiente de color queda oscuro siempre (PRD §5.2); el
+          resto de la pantalla sigue el tema claro/oscuro normal. */}
+      <div data-theme="dark" className="w-full rounded-[var(--radius-frame)] bg-surface-0 p-3">
+        <ColorCard grid={grid} guesses={guesses} disabled revealTarget onTap={() => {}} />
+      </div>
 
       <div
         ref={lineRef}

@@ -39,6 +39,15 @@ describe("random-word.randomWordColor", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("envía excludeWord en el body cuando se pasa", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(200, { word: "musgo", hex: "#4a5d23" }));
+    await randomWordColor("óxido");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/random-word",
+      expect.objectContaining({ body: JSON.stringify({ excludeWord: "óxido" }) }),
+    );
+  });
+
   it("fetch que lanza (fallo de red) se traduce a reason 'network'", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new TypeError("failed to fetch"));
     const result = await randomWordColor();

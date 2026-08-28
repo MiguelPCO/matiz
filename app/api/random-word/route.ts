@@ -7,7 +7,11 @@ import { NextResponse } from "next/server";
  * el caso donde sí la elige). Mismo patrón server-side: la API key nunca
  * llega al cliente. temperature alto + nonce en el prompt para variar
  * entre llamadas — sin ellos Claude tiende a repetir las mismas palabras
- * "típicas" (rosa, oro, cielo) una y otra vez.
+ * "típicas" (rosa, oro, cielo) una y otra vez. excludeWord (opcional) es la
+ * palabra de la partida anterior — Setup.tsx la guarda en localStorage y la
+ * reenvía aquí para que cada partida de Solo sea de un color distinto al de
+ * la última (best-effort de prompt; Setup.tsx reintenta una vez si aun así
+ * coincide).
  */
 
 const client = new Anthropic();
@@ -20,7 +24,21 @@ function errorResponse(reason: ErrorReason, status: number) {
   return NextResponse.json({ error: reason }, { status });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    // sin body es válido — la primera llamada de una sesión no tiene nada que excluir
+  }
+
+  const excludeWordRaw =
+    typeof body === "object" && body !== null && "excludeWord" in body
+      ? (body as { excludeWord: unknown }).excludeWord
+      : null;
+  const excludeWord =
+    typeof excludeWordRaw === "string" && excludeWordRaw.trim() ? excludeWordRaw.trim() : null;
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
   const nonce = Math.floor(Math.random() * 1_000_000);
@@ -35,7 +53,7 @@ export async function POST() {
         messages: [
           {
             role: "user",
-            content: `Elige al azar UN concepto cotidiano en español fuertemente asociado a un color reconocible (objeto, fruta, flor, material, animal...): el color del objeto o material real, el más prototípico. Que sea distinto cada vez que te lo pidan (semilla de variación: ${nonce}) — evita repetir los ejemplos más obvios de tu primera ocurrencia. Responde ÚNICAMENTE con JSON: {"word": "...", "hex": "#rrggbb"}.`,
+            content: `Elige al azar UN concepto cotidiano en español fuertemente asociado a un color reconocible (objeto, fruta, flor, material, animal...): el color del objeto o material real, el más prototípico. Que sea distinto cada vez que te lo pidan (semilla de variación: ${nonce}) — evita repetir los ejemplos más obvios de tu primera ocurrencia.${excludeWord ? ` No puede ser "${excludeWord}" — esa fue la última partida, tiene que ser un concepto y un color distintos.` : ""} Responde ÚNICAMENTE con JSON: {"word": "...", "hex": "#rrggbb"}.`,
           },
         ],
       },

@@ -61,6 +61,27 @@ const WORD_ERROR_COPY: Record<"network" | "invalid" | "timeout", string> = {
 };
 
 const MAX_STORED_IMAGE_EDGE = 640;
+const LAST_SOLO_WORD_KEY = "matiz-last-solo-word";
+
+function normalizeWord(word: string): string {
+  return word.trim().toLowerCase();
+}
+
+function readLastSoloWord(): string | null {
+  try {
+    return localStorage.getItem(LAST_SOLO_WORD_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastSoloWord(word: string): void {
+  try {
+    localStorage.setItem(LAST_SOLO_WORD_KEY, word);
+  } catch {
+    // localStorage no disponible (privado/bloqueado) — no es crítico, solo se pierde la garantía de no-repetición
+  }
+}
 
 function downscaleToDataUrl(img: HTMLImageElement, maxEdge: number): string {
   const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
@@ -102,11 +123,20 @@ export function Setup() {
   // mount; "Reintentar" llama a la misma función directamente.
   const generateRandomClue = useCallback(async () => {
     setDraft({ status: "loading" });
-    const result = await randomWordColor();
+    const lastWord = readLastSoloWord();
+    let result = await randomWordColor(lastWord ?? undefined);
+    // best-effort de prompt (ver route) — si aun así repite la misma palabra
+    // que la partida anterior, un segundo intento sin exclusión adicional
+    // suele bastar (la aleatoriedad de temperature:1 rara vez repite dos
+    // veces seguidas); no reintenta en bucle para no alargar la espera.
+    if (result.ok && lastWord && normalizeWord(result.word) === normalizeWord(lastWord)) {
+      result = await randomWordColor(lastWord);
+    }
     if (!result.ok) {
       setDraft({ status: "error", reason: result.reason });
       return;
     }
+    writeLastSoloWord(result.word);
     setDraft({ status: "ready", targetHex: result.hex, word: result.word });
   }, []);
 
@@ -262,6 +292,7 @@ export function Setup() {
                 value={word}
                 onChange={(e) => setWord(e.target.value)}
                 placeholder="Palabra (p. ej. óxido)"
+                aria-label={pistaLabel}
                 disabled={isLoading}
                 className="rounded-[var(--radius-panel)] border border-line bg-surface-1 px-3 py-2 font-sans text-sm text-text"
               />
