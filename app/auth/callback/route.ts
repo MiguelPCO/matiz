@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../lib/supabase";
+import { createServerSupabaseClient } from "../../../lib/supabase-server";
 
 /**
  * Callback OAuth de Supabase Auth (Google) — intercambia el `code` de la
