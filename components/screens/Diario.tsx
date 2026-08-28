@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useDaily } from "../../hooks/useDaily";
 import { useTheme } from "../../hooks/useTheme";
 import { buildShareText } from "../../lib/daily";
+import { isSupabaseConfigured } from "../../lib/supabase";
 import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
 import { DIFFICULTY } from "../../lib/types";
@@ -27,6 +28,10 @@ import { Thermometer } from "../game/Thermometer";
  * partida de hoy se muestra DailyStats (racha/calendario/cuenta atrás),
  * calculado sobre el historial completo (hooks/useDaily.ts, un DailyResult
  * por fecha) — no solo el día de hoy.
+ * Cuenta (Google vía Supabase Auth, opcional — ver
+ * docs/superpowers/specs/2026-08-28-diario-account-sync-design.md): el
+ * botón de sesión solo aparece si isSupabaseConfigured() es true; sin eso
+ * configurado, Diario funciona exactamente igual que antes, 100% local.
  */
 
 function verdictFor(ring: number): string {
@@ -37,7 +42,7 @@ function verdictFor(ring: number): string {
 }
 
 export function Diario() {
-  const { state, dispatch, history } = useDaily();
+  const { state, dispatch, history, auth, signInWithGoogle, signOut } = useDaily();
   const [theme, toggleTheme] = useTheme();
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
 
@@ -101,14 +106,26 @@ export function Diario() {
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
           Diario · {state.dateKey}
         </span>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
-        >
-          {theme === "dark" ? "☀" : "☾"}
-        </button>
+        <div className="flex items-center gap-2">
+          {isSupabaseConfigured() && (
+            <button
+              type="button"
+              onClick={auth.status === "signed-in" ? signOut : signInWithGoogle}
+              aria-label={auth.status === "signed-in" ? "Cerrar sesión" : "Iniciar sesión con Google"}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+            >
+              {auth.status === "signed-in" ? "◐" : "○"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+        </div>
       </div>
 
       {state.phase === "playing" ? (
