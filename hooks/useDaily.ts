@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Dispatch } from "react";
 import { colorWord } from "../lib/color-word";
 import { deltaE } from "../lib/color";
 import { buildDailyGridSpec, localDateKey } from "../lib/daily";
+import { entriesToUpload, mergeDailyHistory } from "../lib/daily-sync";
 import { scoreRound } from "../lib/engine";
 import { buildGrid } from "../lib/grid";
+import { createBrowserSupabaseClient } from "../lib/supabase";
 import { DIFFICULTY, MAX_GUESSES } from "../lib/types";
+import { useSupabaseAuth } from "./useSupabaseAuth";
 import type { DailyHistory, DailyResult } from "../lib/daily";
 import type { GridSpec, HintKind, Round } from "../lib/types";
 
@@ -60,17 +63,28 @@ function readHistory(): DailyHistory {
   }
 }
 
-function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
-  const history = { ...base, [dateKey]: result };
+function persistHistory(history: DailyHistory): DailyHistory {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(DAILY_HISTORY_STORAGE_KEY, JSON.stringify(history));
   }
   return history;
 }
 
+function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
+  return persistHistory({ ...base, [dateKey]: result });
+}
+
 interface DailyWordStorage {
   readonly date: string;
   readonly word: string;
+}
+
+interface DailyResultRow {
+  readonly date_key: string;
+  readonly status: "solved" | "failed";
+  readonly score: number;
+  readonly guesses: DailyResult["guesses"];
+  readonly hints: DailyResult["hints"];
 }
 
 // Palabra-pista del día: solo etiqueta el color YA generado por
@@ -234,9 +248,15 @@ export function useDaily(): {
   state: DailyState;
   dispatch: Dispatch<DailyAction>;
   history: DailyHistory;
+  auth: ReturnType<typeof useSupabaseAuth>["auth"];
+  signInWithGoogle: () => void;
+  signOut: () => void;
 } {
   const [state, dispatch] = useReducer(dailyReducer, initialDailyState);
   const [history, setHistory] = useState<DailyHistory>({});
+  const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
+  const historyRef = useRef(history);
+  historyRef.current = history;
 
   useEffect(() => {
     // localDateKey() se llama UNA sola vez aquí (misma marca de tiempo `now`
@@ -264,6 +284,52 @@ export function useDaily(): {
     dispatch({ type: "HYDRATE", cached, gridSpec, dateKey });
   }, []);
 
+  // Al iniciar sesión (o al montar ya con sesión activa), fusiona el
+  // historial remoto sobre el local y sube lo que falte en remoto — sin
+  // botón, automático (ver spec §"Cambios en hooks/useDaily.ts"). Best-effort:
+  // un fallo de red aquí no bloquea nada, se reintenta solo (entriesToUpload
+  // vuelve a detectar lo no subido) la próxima vez que este efecto corra con
+  // sesión activa. historyRef evita depender de `history` en el array de
+  // deps — evitaría reejecutar este efecto en cada partida jugada.
+  useEffect(() => {
+    if (auth.status !== "signed-in" || !auth.userId) return;
+    const userId = auth.userId;
+    const supabase = createBrowserSupabaseClient();
+    let cancelled = false;
+
+    supabase
+      .from("daily_results")
+      .select("date_key, status, score, guesses, hints")
+      .eq("user_id", userId)
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+
+        const remote: Record<string, DailyResult> = {};
+        for (const row of data as DailyResultRow[]) {
+          remote[row.date_key] = { status: row.status, score: row.score, guesses: row.guesses, hints: row.hints };
+        }
+
+        const toUpload = entriesToUpload(historyRef.current, remote);
+        const rows = Object.entries(toUpload).map(([dateKey, result]) => ({
+          user_id: userId,
+          date_key: dateKey,
+          status: result.status,
+          score: result.score,
+          guesses: result.guesses,
+          hints: result.hints,
+        }));
+        if (rows.length > 0) {
+          supabase.from("daily_results").insert(rows).then(() => {}, () => {});
+        }
+
+        setHistory((current) => persistHistory(mergeDailyHistory(current, remote)));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.status, auth.userId]);
+
   useEffect(() => {
     const round = state.round;
     if (state.phase !== "result" || !round || round.status === "playing") return;
@@ -274,7 +340,26 @@ export function useDaily(): {
     const status = round.status;
     const result: DailyResult = { guesses: round.guesses, hints: round.hints, status, score: round.score ?? 0 };
     setHistory((current) => writeHistoryEntry(current, state.dateKey, result));
-  }, [state.phase, state.round, state.dateKey, history]);
+
+    // Subida best-effort del resultado de hoy — si falla (sin red, sesión
+    // caducada) no se reintenta aquí mismo: el efecto de arriba la recogerá
+    // sola la próxima vez que corra con sesión activa (entriesToUpload la
+    // seguirá viendo como no subida).
+    if (auth.status === "signed-in" && auth.userId) {
+      const supabase = createBrowserSupabaseClient();
+      supabase
+        .from("daily_results")
+        .insert({
+          user_id: auth.userId,
+          date_key: state.dateKey,
+          status,
+          score: result.score,
+          guesses: result.guesses,
+          hints: result.hints,
+        })
+        .then(() => {}, () => {});
+    }
+  }, [state.phase, state.round, state.dateKey, history, auth.status, auth.userId]);
 
   // El efecto de arriba persiste el resultado un render después de que
   // state.phase pase a "result" (setHistory no puede correr en el mismo
@@ -322,5 +407,5 @@ export function useDaily(): {
     };
   }, [state.gridSpec, state.dateKey, state.round?.clue.word]);
 
-  return { state, dispatch, history: displayHistory };
+  return { state, dispatch, history: displayHistory, auth, signInWithGoogle, signOut };
 }
