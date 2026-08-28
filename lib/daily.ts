@@ -51,6 +51,81 @@ export interface DailyResult {
   readonly score: number;
 }
 
+/** Un DailyResult por fecha jugada — historial completo, no solo el último día (hooks/useDaily.ts). */
+export type DailyHistory = Readonly<Record<string, DailyResult>>;
+
+function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
+function addDays(key: string, delta: number): string {
+  const date = parseDateKey(key);
+  date.setDate(date.getDate() + delta);
+  return localDateKey(date);
+}
+
+export interface DailyStats {
+  readonly gamesPlayed: number;
+  readonly wins: number;
+  readonly winPercent: number;
+  readonly currentStreak: number;
+  readonly bestStreak: number;
+}
+
+/**
+ * Racha actual mirando hacia atrás desde hoy: fallar hoy la corta a 0 de
+ * inmediato; no haber jugado hoy todavía NO la corta (se sigue contando
+ * desde ayer) — un hueco (día sin entrada) en el pasado sí la corta, ahí.
+ */
+function currentStreakOf(history: DailyHistory, todayKey: string): number {
+  const today = history[todayKey];
+  if (today?.status === "failed") return 0;
+
+  let streak = today?.status === "solved" ? 1 : 0;
+  let cursor = addDays(todayKey, -1);
+  while (history[cursor]?.status === "solved") {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+/** Mejor racha histórica: recorre el historial en orden cronológico, exige días de calendario consecutivos (no solo entradas consecutivas — un hueco corta la racha aunque no haya entrada "fallada" ahí). */
+function bestStreakOf(history: DailyHistory): number {
+  const keys = Object.keys(history).sort();
+  let best = 0;
+  let run = 0;
+  let prevKey: string | null = null;
+  for (const key of keys) {
+    if (history[key]?.status !== "solved") {
+      run = 0;
+      prevKey = key;
+      continue;
+    }
+    const contiguous = prevKey !== null && addDays(prevKey, 1) === key;
+    run = contiguous ? run + 1 : 1;
+    best = Math.max(best, run);
+    prevKey = key;
+  }
+  return best;
+}
+
+export function computeDailyStats(history: DailyHistory, todayKey: string): DailyStats {
+  const entries = Object.values(history);
+  const gamesPlayed = entries.length;
+  const wins = entries.filter((e) => e.status === "solved").length;
+  const winPercent = gamesPlayed === 0 ? 0 : Math.round((wins / gamesPlayed) * 100);
+
+  return {
+    gamesPlayed,
+    wins,
+    winPercent,
+    currentStreak: currentStreakOf(history, todayKey),
+    bestStreak: bestStreakOf(history),
+  };
+}
+
 const RING_EMOJI = ["🟩", "🟨", "🟧"] as const;
 
 export function buildShareText(dateKey: string, result: DailyResult): string {

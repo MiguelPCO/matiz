@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hexToOklch } from "./color";
-import { buildDailyGridSpec, buildShareText, localDateKey } from "./daily";
+import { buildDailyGridSpec, buildShareText, computeDailyStats, localDateKey } from "./daily";
+import type { DailyHistory, DailyResult } from "./daily";
 
 describe("daily.localDateKey", () => {
   it("misma fecha local produce la misma clave, sin importar la hora", () => {
@@ -50,6 +51,91 @@ describe("daily.buildDailyGridSpec", () => {
       hexes.add(buildDailyGridSpec(new Date(2026, 0, i + 1)).targetHex);
     }
     expect(hexes.size).toBeGreaterThanOrEqual(N - 2);
+  });
+});
+
+function win(score = 100): DailyResult {
+  return { guesses: [], hints: [], status: "solved", score };
+}
+
+function loss(score = 0): DailyResult {
+  return { guesses: [], hints: [], status: "failed", score };
+}
+
+describe("daily.computeDailyStats", () => {
+  it("historial vacío: todo en cero", () => {
+    expect(computeDailyStats({}, "2026-08-23")).toEqual({
+      gamesPlayed: 0,
+      wins: 0,
+      winPercent: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+    });
+  });
+
+  it("cuenta partidas/victorias/% correctamente", () => {
+    const history: DailyHistory = {
+      "2026-08-20": win(),
+      "2026-08-21": loss(),
+      "2026-08-22": win(),
+    };
+    const stats = computeDailyStats(history, "2026-08-22");
+    expect(stats.gamesPlayed).toBe(3);
+    expect(stats.wins).toBe(2);
+    expect(stats.winPercent).toBe(67); // round(2/3*100)
+  });
+
+  it("racha actual: días consecutivos ganados terminando hoy", () => {
+    const history: DailyHistory = {
+      "2026-08-20": win(),
+      "2026-08-21": win(),
+      "2026-08-22": win(),
+    };
+    expect(computeDailyStats(history, "2026-08-22").currentStreak).toBe(3);
+  });
+
+  it("racha actual: fallar hoy la corta a 0 de inmediato aunque ayer se ganara", () => {
+    const history: DailyHistory = {
+      "2026-08-21": win(),
+      "2026-08-22": loss(),
+    };
+    expect(computeDailyStats(history, "2026-08-22").currentStreak).toBe(0);
+  });
+
+  it("racha actual: no haber jugado hoy todavía no la corta, sigue contando desde ayer", () => {
+    const history: DailyHistory = {
+      "2026-08-20": win(),
+      "2026-08-21": win(),
+      // sin entrada para "2026-08-22" — hoy, aún sin jugar
+    };
+    expect(computeDailyStats(history, "2026-08-22").currentStreak).toBe(2);
+  });
+
+  it("racha actual: un hueco en el pasado la corta ahí", () => {
+    const history: DailyHistory = {
+      "2026-08-18": win(),
+      // hueco en 08-19 (no jugado)
+      "2026-08-20": win(),
+      "2026-08-21": win(),
+      "2026-08-22": win(),
+    };
+    expect(computeDailyStats(history, "2026-08-22").currentStreak).toBe(3);
+  });
+
+  it("mejor racha: puede ser mayor que la actual si hubo una racha histórica más larga", () => {
+    const history: DailyHistory = {
+      "2026-08-10": win(),
+      "2026-08-11": win(),
+      "2026-08-12": win(),
+      "2026-08-13": win(),
+      // hueco
+      "2026-08-20": win(),
+      "2026-08-21": loss(),
+      "2026-08-22": win(),
+    };
+    const stats = computeDailyStats(history, "2026-08-22");
+    expect(stats.bestStreak).toBe(4);
+    expect(stats.currentStreak).toBe(1);
   });
 });
 

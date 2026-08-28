@@ -11,6 +11,7 @@ import { DIFFICULTY } from "../../lib/types";
 import type { HintKind } from "../../lib/types";
 import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
+import { DailyStats } from "../game/DailyStats";
 import { HintRow } from "../game/HintRow";
 import { Reveal } from "../game/Reveal";
 import { Thermometer } from "../game/Thermometer";
@@ -22,7 +23,10 @@ import { Thermometer } from "../game/Thermometer";
  * la palabra-pista es una etiqueta que se le pone DESPUÉS vía IA inversa
  * (lib/color-word.ts, ver hooks/useDaily.ts) — decorativa, no bloqueante:
  * si `round.clue.word` está vacío (aún no llegó, o falló) simplemente no se
- * muestra ClueBar/panel "Pista", el juego funciona igual.
+ * muestra ClueBar/panel "Pista", el juego funciona igual. Tras acabar la
+ * partida de hoy se muestra DailyStats (racha/calendario/cuenta atrás),
+ * calculado sobre el historial completo (hooks/useDaily.ts, un DailyResult
+ * por fecha) — no solo el día de hoy.
  */
 
 function verdictFor(ring: number): string {
@@ -33,7 +37,7 @@ function verdictFor(ring: number): string {
 }
 
 export function Diario() {
-  const { state, dispatch } = useDaily();
+  const { state, dispatch, history } = useDaily();
   const [theme, toggleTheme] = useTheme();
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
 
@@ -145,6 +149,7 @@ export function Diario() {
             actionLabel={shareStatus === "copied" ? "Copiado" : "Compartir resultado"}
             onAction={handleShare}
           />
+          <DailyStats history={history} todayKey={state.dateKey} />
           <Link href="/" className="font-sans text-sm text-text-muted underline">
             Volver a inicio
           </Link>

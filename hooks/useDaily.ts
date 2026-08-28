@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import type { Dispatch } from "react";
 import { colorWord } from "../lib/color-word";
 import { deltaE } from "../lib/color";
@@ -8,7 +8,7 @@ import { buildDailyGridSpec, localDateKey } from "../lib/daily";
 import { scoreRound } from "../lib/engine";
 import { buildGrid } from "../lib/grid";
 import { DIFFICULTY, MAX_GUESSES } from "../lib/types";
-import type { DailyResult } from "../lib/daily";
+import type { DailyHistory, DailyResult } from "../lib/daily";
 import type { GridSpec, HintKind, Round } from "../lib/types";
 
 /**
@@ -23,6 +23,7 @@ import type { GridSpec, HintKind, Round } from "../lib/types";
 
 const PLACEHOLDER_PLAYER_ID = "daily-player";
 const DAILY_STORAGE_KEY = "matiz-daily-v1";
+const DAILY_HISTORY_STORAGE_KEY = "matiz-daily-history-v1";
 const DAILY_WORD_STORAGE_KEY = "matiz-daily-word-v1";
 
 interface DailyStorage {
@@ -30,7 +31,12 @@ interface DailyStorage {
   readonly result: DailyResult;
 }
 
-function readCache(dateKey: string): DailyResult | null {
+// Legado — antes de las estadísticas (racha/calendario), solo se guardaba
+// el resultado del ÚLTIMO día jugado, sobrescrito cada vez. Reemplazado por
+// DAILY_HISTORY_STORAGE_KEY (un resultado por fecha). Se sigue leyendo una
+// vez, solo para migrar el día de hoy si ya se jugó bajo el esquema viejo
+// (ver el efecto de hidratación) — nunca se vuelve a escribir.
+function readLegacyCache(dateKey: string): DailyResult | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(DAILY_STORAGE_KEY);
@@ -43,10 +49,23 @@ function readCache(dateKey: string): DailyResult | null {
   }
 }
 
-function writeCache(dateKey: string, result: DailyResult): void {
-  if (typeof window === "undefined") return;
-  const payload: DailyStorage = { date: dateKey, result };
-  window.localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(payload));
+function readHistory(): DailyHistory {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(DAILY_HISTORY_STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as DailyHistory;
+  } catch {
+    return {};
+  }
+}
+
+function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
+  const history = { ...base, [dateKey]: result };
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(DAILY_HISTORY_STORAGE_KEY, JSON.stringify(history));
+  }
+  return history;
 }
 
 interface DailyWordStorage {
@@ -211,8 +230,13 @@ function dailyReducer(state: DailyState, action: DailyAction): DailyState {
   }
 }
 
-export function useDaily(): { state: DailyState; dispatch: Dispatch<DailyAction> } {
+export function useDaily(): {
+  state: DailyState;
+  dispatch: Dispatch<DailyAction>;
+  history: DailyHistory;
+} {
   const [state, dispatch] = useReducer(dailyReducer, initialDailyState);
+  const [history, setHistory] = useState<DailyHistory>({});
 
   useEffect(() => {
     // localDateKey() se llama UNA sola vez aquí (misma marca de tiempo `now`
@@ -222,20 +246,57 @@ export function useDaily(): { state: DailyState; dispatch: Dispatch<DailyAction>
     const now = new Date();
     const dateKey = localDateKey(now);
     const gridSpec = buildDailyGridSpec(now);
-    dispatch({ type: "HYDRATE", cached: readCache(dateKey), gridSpec, dateKey });
+
+    let currentHistory = readHistory();
+    let cached = currentHistory[dateKey] ?? null;
+    if (!cached) {
+      // Migración de una sola vez: si hoy ya se jugó bajo el esquema viejo
+      // (un solo día en localStorage, sin historial), se adopta como la
+      // primera entrada del historial — así no se pierde la racha de quien
+      // ya jugó hoy antes de que existieran las estadísticas.
+      const legacy = readLegacyCache(dateKey);
+      if (legacy) {
+        currentHistory = writeHistoryEntry(currentHistory, dateKey, legacy);
+        cached = legacy;
+      }
+    }
+    setHistory(currentHistory);
+    dispatch({ type: "HYDRATE", cached, gridSpec, dateKey });
   }, []);
 
   useEffect(() => {
     const round = state.round;
     if (state.phase !== "result" || !round || round.status === "playing") return;
-    if (readCache(state.dateKey)) return;
-    writeCache(state.dateKey, {
-      guesses: round.guesses,
-      hints: round.hints,
-      status: round.status,
-      score: round.score ?? 0,
-    });
-  }, [state.phase, state.round, state.dateKey]);
+    if (history[state.dateKey]) return;
+    // status extraído a un const propio: TS no propaga el narrowing de
+    // round.status a través del closure de setHistory (solo el de `round`
+    // en sí), así que se captura ya con el tipo "solved"|"failed" resuelto.
+    const status = round.status;
+    const result: DailyResult = { guesses: round.guesses, hints: round.hints, status, score: round.score ?? 0 };
+    setHistory((current) => writeHistoryEntry(current, state.dateKey, result));
+  }, [state.phase, state.round, state.dateKey, history]);
+
+  // El efecto de arriba persiste el resultado un render después de que
+  // state.phase pase a "result" (setHistory no puede correr en el mismo
+  // tick del reducer) — sin esto, la primera vez que se ve DailyStats tras
+  // ganar/perder en vivo mostraría la racha/calendario SIN la partida que
+  // se acaba de jugar. displayHistory funde la partida de hoy ya conocida
+  // (via state.round) por encima de `history`, así el consumidor siempre ve
+  // el dato correcto de inmediato, sin esperar al efecto.
+  const displayHistory = useMemo((): DailyHistory => {
+    const round = state.round;
+    if (state.phase !== "result" || !round || round.status === "playing") return history;
+    if (history[state.dateKey]) return history;
+    return {
+      ...history,
+      [state.dateKey]: {
+        guesses: round.guesses,
+        hints: round.hints,
+        status: round.status,
+        score: round.score ?? 0,
+      },
+    };
+  }, [history, state.phase, state.round, state.dateKey]);
 
   // Palabra-pista: no bloquea nada (lib/daily.ts sigue generando el color
   // en puro, sin red) — si falla, round.clue.word se queda en "" y
@@ -261,5 +322,5 @@ export function useDaily(): { state: DailyState; dispatch: Dispatch<DailyAction>
     };
   }, [state.gridSpec, state.dateKey, state.round?.clue.word]);
 
-  return { state, dispatch };
+  return { state, dispatch, history: displayHistory };
 }
