@@ -51,16 +51,13 @@ export async function POST(request: Request) {
   try {
     const response = await client.messages.create(
       {
-        model: "claude-opus-5",
-        max_tokens: 16000,
-        // `temperature` no es un parámetro soportado en este modelo (la API
-        // devuelve 400 invalid_request_error si se envía) — no hay perilla
-        // de determinismo disponible aquí. Todos los jugadores viendo la
-        // misma palabra el mismo día para el mismo hex depende solo de la
-        // caché de useDaily.ts (por dateKey, en localStorage), que evita
-        // repetir la llamada en el mismo navegador — no sincroniza entre
-        // jugadores por sí sola.
-        output_config: { effort: "low" },
+        model: "claude-haiku-4-5",
+        max_tokens: 256,
+        // Sin perilla de determinismo en este modelo/tarea — todos los
+        // jugadores viendo la misma palabra el mismo día para el mismo hex
+        // depende solo de la caché de useDaily.ts (por dateKey, en
+        // localStorage), que evita repetir la llamada en el mismo
+        // navegador — no sincroniza entre jugadores por sí sola.
         messages: [
           {
             role: "user",
