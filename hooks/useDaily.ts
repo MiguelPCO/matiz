@@ -29,6 +29,7 @@ const PLACEHOLDER_PLAYER_ID = "daily-player";
 const DAILY_STORAGE_KEY = "matiz-daily-v1";
 const DAILY_HISTORY_STORAGE_KEY = "matiz-daily-history-v1";
 const DAILY_WORD_STORAGE_KEY = "matiz-daily-word-v1";
+const DAILY_SYNCED_USER_KEY = "matiz-daily-synced-user-v1";
 
 interface DailyStorage {
   readonly date: string;
@@ -110,6 +111,31 @@ function writeWordCache(dateKey: string, word: string): void {
   if (typeof window === "undefined") return;
   const payload: DailyWordStorage = { date: dateKey, word };
   window.localStorage.setItem(DAILY_WORD_STORAGE_KEY, JSON.stringify(payload));
+}
+
+// userId cuyo historial remoto fue el último en fusionarse — persistido (no
+// un ref en memoria) porque signInWithGoogle hace una redirección de página
+// completa (Diario → consentimiento de Google → /auth/callback → /diario):
+// eso desmonta y remonta todo el árbol de React, así que un ref se reinicia
+// a null justo en el momento en que necesitamos recordar la cuenta anterior.
+// Ver el guard anti-contaminación en el efecto de fusión más abajo.
+function readSyncedUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(DAILY_SYNCED_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncedUserId(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DAILY_SYNCED_USER_KEY, userId);
+  } catch {
+    // localStorage no disponible — el guard degrada a "no se puede
+    // verificar cambio de cuenta", mismo caso que primera sincronización.
+  }
 }
 
 export type DailyPhase = "loading" | "playing" | "result";
@@ -263,13 +289,6 @@ export function useDaily(): {
   useEffect(() => {
     historyRef.current = history;
   });
-  // userId cuyo historial remoto ya se fusionó dentro de historyRef. Si entra
-  // otra cuenta de Google en el mismo navegador (cerrar sesión + entrar con
-  // otra), historyRef arrastra el historial de la PRIMERA cuenta y subirlo
-  // escribiría esas partidas bajo el user_id de la segunda — irreversible,
-  // porque el esquema no tiene policy de update ni de delete.
-  const syncedUserIdRef = useRef<string | null>(null);
-
   useEffect(() => {
     // localDateKey() se llama UNA sola vez aquí (misma marca de tiempo `now`
     // que arma gridSpec) y se propaga como state.dateKey — evita que una
@@ -319,13 +338,19 @@ export function useDaily(): {
 
         const remote = rowsToDailyHistory(data as DailyResultRow[]);
 
-        // Guard anti-contaminación entre cuentas (ver syncedUserIdRef): si en
-        // este montaje ya se fusionó el historial de OTRO usuario, historyRef
-        // no es una base segura desde la que subir — se relee la base local
-        // en su lugar y se fusiona sobre ella, no sobre el estado actual.
-        const switchedAccount = syncedUserIdRef.current !== null && syncedUserIdRef.current !== userId;
-        const localBase = switchedAccount ? readHistory() : historyRef.current;
-        syncedUserIdRef.current = userId;
+        // Guard anti-contaminación entre cuentas: si la última cuenta cuyo
+        // historial se fusionó en este navegador (persistido, ver
+        // readSyncedUserId) es DISTINTA de la que acaba de entrar, el
+        // historial local no es una base segura desde la que subir — puede
+        // arrastrar partidas de la cuenta anterior. En ese caso no se sube
+        // nada de lo que ya hubiera en local (base vacía): solo se fusiona
+        // el remoto de la cuenta nueva para mostrarlo. Las partidas que se
+        // jueguen de aquí en adelante sí se detectan y suben con
+        // normalidad la próxima vez que este efecto corra.
+        const lastSyncedUserId = readSyncedUserId();
+        const switchedAccount = lastSyncedUserId !== null && lastSyncedUserId !== userId;
+        const localBase: DailyHistory = switchedAccount ? {} : historyRef.current;
+        writeSyncedUserId(userId);
 
         // upsert + ignoreDuplicates → ON CONFLICT DO NOTHING: solo necesita
         // privilegio de INSERT (encaja con la policy insert-only) y nunca
@@ -340,9 +365,7 @@ export function useDaily(): {
             .then(() => {}, () => {});
         }
 
-        setHistory((current) =>
-          persistHistory(mergeDailyHistory(switchedAccount ? localBase : current, remote)),
-        );
+        setHistory((current) => persistHistory(mergeDailyHistory(current, remote)));
       });
 
     return () => {
