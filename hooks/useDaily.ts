@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Dispatch } from "react";
 import { colorWord } from "../lib/color-word";
 import { deltaE } from "../lib/color";
 import { buildDailyGridSpec, localDateKey } from "../lib/daily";
+import { dailyHistoryToRows, entriesToUpload, mergeDailyHistory, rowsToDailyHistory } from "../lib/daily-sync";
 import { scoreRound } from "../lib/engine";
 import { buildGrid } from "../lib/grid";
+import { createBrowserSupabaseClient } from "../lib/supabase";
 import { DIFFICULTY, MAX_GUESSES } from "../lib/types";
+import { useSupabaseAuth } from "./useSupabaseAuth";
 import type { DailyHistory, DailyResult } from "../lib/daily";
+import type { DailyResultRow } from "../lib/daily-sync";
 import type { GridSpec, HintKind, Round } from "../lib/types";
 
 /**
@@ -60,18 +64,28 @@ function readHistory(): DailyHistory {
   }
 }
 
-function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
-  const history = { ...base, [dateKey]: result };
+function persistHistory(history: DailyHistory): DailyHistory {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(DAILY_HISTORY_STORAGE_KEY, JSON.stringify(history));
   }
   return history;
 }
 
+function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
+  return persistHistory({ ...base, [dateKey]: result });
+}
+
 interface DailyWordStorage {
   readonly date: string;
   readonly word: string;
 }
+
+// Tope explícito de filas del select remoto. PostgREST corta las respuestas
+// en 1000 filas por defecto y NO avisa — sin este limit, un jugador de más
+// de ~2,7 años vería su historial remoto truncado en silencio y para
+// siempre. 3660 ≈ 10 años de partidas diarias: holgado, pero acotado (no
+// hay paginación, deliberadamente fuera de alcance).
+const REMOTE_HISTORY_ROW_LIMIT = 3660;
 
 // Palabra-pista del día: solo etiqueta el color YA generado por
 // buildDailyGridSpec (lib/daily.ts sigue siendo puramente determinista por
@@ -234,9 +248,27 @@ export function useDaily(): {
   state: DailyState;
   dispatch: Dispatch<DailyAction>;
   history: DailyHistory;
+  auth: ReturnType<typeof useSupabaseAuth>["auth"];
+  signInWithGoogle: () => void;
+  signOut: () => void;
 } {
   const [state, dispatch] = useReducer(dailyReducer, initialDailyState);
   const [history, setHistory] = useState<DailyHistory>({});
+  const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
+  const historyRef = useRef(history);
+  // Ref sincronizado en un efecto, no en el cuerpo del render: escribir refs
+  // durante el render está desaconsejado bajo renderizado concurrente. Sin
+  // array de deps → corre tras CADA render, misma cadencia efectiva que la
+  // asignación directa que había aquí antes.
+  useEffect(() => {
+    historyRef.current = history;
+  });
+  // userId cuyo historial remoto ya se fusionó dentro de historyRef. Si entra
+  // otra cuenta de Google en el mismo navegador (cerrar sesión + entrar con
+  // otra), historyRef arrastra el historial de la PRIMERA cuenta y subirlo
+  // escribiría esas partidas bajo el user_id de la segunda — irreversible,
+  // porque el esquema no tiene policy de update ni de delete.
+  const syncedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // localDateKey() se llama UNA sola vez aquí (misma marca de tiempo `now`
@@ -264,6 +296,60 @@ export function useDaily(): {
     dispatch({ type: "HYDRATE", cached, gridSpec, dateKey });
   }, []);
 
+  // Al iniciar sesión (o al montar ya con sesión activa), fusiona el
+  // historial remoto sobre el local y sube lo que falte en remoto — sin
+  // botón, automático (ver spec §"Cambios en hooks/useDaily.ts"). Best-effort:
+  // un fallo de red aquí no bloquea nada, se reintenta solo (entriesToUpload
+  // vuelve a detectar lo no subido) la próxima vez que este efecto corra con
+  // sesión activa. historyRef evita depender de `history` en el array de
+  // deps — evitaría reejecutar este efecto en cada partida jugada.
+  useEffect(() => {
+    if (auth.status !== "signed-in" || !auth.userId) return;
+    const userId = auth.userId;
+    const supabase = createBrowserSupabaseClient();
+    let cancelled = false;
+
+    supabase
+      .from("daily_results")
+      .select("date_key, status, score, guesses, hints")
+      .eq("user_id", userId)
+      .limit(REMOTE_HISTORY_ROW_LIMIT)
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+
+        const remote = rowsToDailyHistory(data as DailyResultRow[]);
+
+        // Guard anti-contaminación entre cuentas (ver syncedUserIdRef): si en
+        // este montaje ya se fusionó el historial de OTRO usuario, historyRef
+        // no es una base segura desde la que subir — se relee la base local
+        // en su lugar y se fusiona sobre ella, no sobre el estado actual.
+        const switchedAccount = syncedUserIdRef.current !== null && syncedUserIdRef.current !== userId;
+        const localBase = switchedAccount ? readHistory() : historyRef.current;
+        syncedUserIdRef.current = userId;
+
+        // upsert + ignoreDuplicates → ON CONFLICT DO NOTHING: solo necesita
+        // privilegio de INSERT (encaja con la policy insert-only) y nunca
+        // reescribe un día ya jugado. Con .insert() a secas, una sola fila
+        // que ya existiera en remoto (carrera con el efecto de completar el
+        // día de hoy) tumbaría el lote ENTERO y se perdería todo lo demás.
+        const rows = dailyHistoryToRows(userId, entriesToUpload(localBase, remote));
+        if (rows.length > 0) {
+          supabase
+            .from("daily_results")
+            .upsert(rows, { onConflict: "user_id,date_key", ignoreDuplicates: true })
+            .then(() => {}, () => {});
+        }
+
+        setHistory((current) =>
+          persistHistory(mergeDailyHistory(switchedAccount ? localBase : current, remote)),
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.status, auth.userId]);
+
   useEffect(() => {
     const round = state.round;
     if (state.phase !== "result" || !round || round.status === "playing") return;
@@ -274,7 +360,23 @@ export function useDaily(): {
     const status = round.status;
     const result: DailyResult = { guesses: round.guesses, hints: round.hints, status, score: round.score ?? 0 };
     setHistory((current) => writeHistoryEntry(current, state.dateKey, result));
-  }, [state.phase, state.round, state.dateKey, history]);
+
+    // Subida best-effort del resultado de hoy — si falla (sin red, sesión
+    // caducada) no se reintenta aquí mismo: el efecto de arriba la recogerá
+    // sola la próxima vez que corra con sesión activa (entriesToUpload la
+    // seguirá viendo como no subida). Mismo upsert tolerante a conflictos que
+    // allí: esta fila puede colisionar con una subida del efecto de fusión.
+    if (auth.status === "signed-in" && auth.userId) {
+      const supabase = createBrowserSupabaseClient();
+      supabase
+        .from("daily_results")
+        .upsert(dailyHistoryToRows(auth.userId, { [state.dateKey]: result }), {
+          onConflict: "user_id,date_key",
+          ignoreDuplicates: true,
+        })
+        .then(() => {}, () => {});
+    }
+  }, [state.phase, state.round, state.dateKey, history, auth.status, auth.userId]);
 
   // El efecto de arriba persiste el resultado un render después de que
   // state.phase pase a "result" (setHistory no puede correr en el mismo
@@ -322,5 +424,5 @@ export function useDaily(): {
     };
   }, [state.gridSpec, state.dateKey, state.round?.clue.word]);
 
-  return { state, dispatch, history: displayHistory };
+  return { state, dispatch, history: displayHistory, auth, signInWithGoogle, signOut };
 }
