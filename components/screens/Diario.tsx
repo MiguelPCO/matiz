@@ -14,8 +14,10 @@ import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
 import { DailyStats } from "../game/DailyStats";
 import { HintRow } from "../game/HintRow";
+import { ProfileButton } from "../ui/ProfileButton";
 import { Reveal } from "../game/Reveal";
 import { Thermometer } from "../game/Thermometer";
+import { Profile } from "./Profile";
 
 /**
  * Diario — ruta propia, no pasa por el switch(state.phase) de Solo/Duelo
@@ -45,6 +47,7 @@ export function Diario() {
   const { state, dispatch, history, auth, signInWithGoogle, signOut } = useDaily();
   const [theme, toggleTheme] = useTheme();
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const grid = useMemo(() => (state.round ? buildGrid(state.round.gridSpec) : null), [state.round?.gridSpec]);
@@ -108,31 +111,7 @@ export function Diario() {
         </span>
         <div className="flex items-center gap-2">
           {isSupabaseConfigured() && (
-            // auth.status === "loading" (getSession aún resolviendo, p. ej.
-            // justo al volver del callback de Google) deja el botón
-            // deshabilitado y sin handler: pulsarlo ahí dispararía un SEGUNDO
-            // redirect de OAuth encima del que acaba de completar.
-            <button
-              type="button"
-              onClick={
-                auth.status === "loading"
-                  ? undefined
-                  : auth.status === "signed-in"
-                    ? signOut
-                    : signInWithGoogle
-              }
-              disabled={auth.status === "loading"}
-              aria-label={
-                auth.status === "loading"
-                  ? "Cargando sesión"
-                  : auth.status === "signed-in"
-                    ? "Cerrar sesión"
-                    : "Iniciar sesión con Google"
-              }
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted disabled:opacity-40"
-            >
-              {auth.status === "signed-in" ? "◐" : "○"}
-            </button>
+            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
           )}
           <button
             type="button"
@@ -189,6 +168,13 @@ export function Diario() {
           </Link>
         </>
       )}
+      <Profile
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        auth={auth}
+        signInWithGoogle={signInWithGoogle}
+        signOut={signOut}
+      />
     </div>
   );
 }
