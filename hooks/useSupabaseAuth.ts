@@ -16,9 +16,10 @@ import { createBrowserSupabaseClient, isSupabaseConfigured } from "../lib/supaba
 export interface AuthState {
   readonly status: "loading" | "signed-out" | "signed-in";
   readonly userId: string | null;
+  readonly email: string | null;
 }
 
-const SIGNED_OUT: AuthState = { status: "signed-out", userId: null };
+const SIGNED_OUT: AuthState = { status: "signed-out", userId: null, email: null };
 
 export function useSupabaseAuth(): {
   readonly auth: AuthState;
@@ -26,7 +27,9 @@ export function useSupabaseAuth(): {
   readonly signOut: () => void;
 } {
   const configured = isSupabaseConfigured();
-  const [auth, setAuth] = useState<AuthState>(configured ? { status: "loading", userId: null } : SIGNED_OUT);
+  const [auth, setAuth] = useState<AuthState>(
+    configured ? { status: "loading", userId: null, email: null } : SIGNED_OUT,
+  );
   const supabase = useMemo(() => (configured ? createBrowserSupabaseClient() : null), [configured]);
 
   useEffect(() => {
@@ -40,7 +43,7 @@ export function useSupabaseAuth(): {
       ({ data }) => {
         setAuth(
           data.session
-            ? { status: "signed-in", userId: data.session.user.id }
+            ? { status: "signed-in", userId: data.session.user.id, email: data.session.user.email ?? null }
             : SIGNED_OUT,
         );
       },
@@ -48,7 +51,11 @@ export function useSupabaseAuth(): {
     );
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuth(session ? { status: "signed-in", userId: session.user.id } : SIGNED_OUT);
+      setAuth(
+        session
+          ? { status: "signed-in", userId: session.user.id, email: session.user.email ?? null }
+          : SIGNED_OUT,
+      );
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -56,10 +63,15 @@ export function useSupabaseAuth(): {
 
   const signInWithGoogle = useCallback(() => {
     if (!supabase) return;
+    // Round-trip la página de origen vía ?next= para que el callback pueda
+    // devolver al usuario donde estaba (Home/Setup/Play/Diario) en vez de
+    // aterrizar siempre en Diario — ver finding 1 de la revisión final de
+    // Profile screen (docs/superpowers/specs/2026-08-29-profile-screen-design.md).
+    const next = encodeURIComponent(window.location.pathname);
     supabase.auth
       .signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${next}` },
       })
       .then(() => {}, () => {});
   }, [supabase]);

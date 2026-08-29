@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
 import { useTheme } from "../../hooks/useTheme";
+import { useSupabaseAuth } from "../../hooks/useSupabaseAuth";
+import { isSupabaseConfigured } from "../../lib/supabase";
 import { oklchToHex } from "../../lib/color";
 import { Button } from "../ui/Button";
 import { Label } from "../ui/Label";
+import { ProfileButton } from "../ui/ProfileButton";
+import { Profile } from "./Profile";
 import { HowToPlay } from "./HowToPlay";
 
 const STRIP_COUNT = 10;
@@ -26,6 +30,8 @@ function useCalibrationStrip(): readonly string[] {
 export function Home() {
   const { state, dispatch } = useGame();
   const [theme, toggleTheme] = useTheme();
+  const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [collectingNames, setCollectingNames] = useState(false);
   const [nameA, setNameA] = useState("");
@@ -47,6 +53,9 @@ export function Home() {
         >
           {theme === "dark" ? "☀" : "☾"}
         </button>
+        {isSupabaseConfigured() && (
+          <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
+        )}
         <button
           type="button"
           onClick={() => setHowToPlayOpen(true)}
@@ -117,6 +126,13 @@ export function Home() {
       )}
 
       <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
+      <Profile
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        auth={auth}
+        signInWithGoogle={signInWithGoogle}
+        signOut={signOut}
+      />
     </main>
   );
 }
