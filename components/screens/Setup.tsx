@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSupabaseAuth } from "../../hooks/useSupabaseAuth";
+import { useTheme } from "../../hooks/useTheme";
 import { useGame } from "../../hooks/useGame";
 import { extractColor } from "../../lib/extract";
+import { isSupabaseConfigured } from "../../lib/supabase";
 import { randomWordColor } from "../../lib/random-word";
 import { DIFFICULTY } from "../../lib/types";
 import type { Clue, ClueType, Difficulty, GridSize, Hex } from "../../lib/types";
@@ -11,7 +14,9 @@ import type { WordColorResult } from "../../lib/word-color";
 import { Button } from "../ui/Button";
 import { Label } from "../ui/Label";
 import { Segmented } from "../ui/Segmented";
+import { ProfileButton } from "../ui/ProfileButton";
 import { HowToPlay } from "./HowToPlay";
+import { Profile } from "./Profile";
 
 /**
  * S1 — pista, tamaño, dificultad. El selector de tamaño/dificultad se
@@ -100,6 +105,9 @@ export function Setup() {
   const { state, dispatch } = useGame();
   const isSolo = state.mode === "solo";
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
+  const [theme, toggleTheme] = useTheme();
+  const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [clueType, setClueType] = useState<ClueType>("word");
   const [word, setWord] = useState("");
   const [draft, setDraft] = useState<ClueDraft>({ status: "idle" });
@@ -204,14 +212,27 @@ export function Setup() {
         >
           ←
         </button>
-        <button
-          type="button"
-          onClick={() => setHowToPlayOpen(true)}
-          aria-label="Cómo se juega"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
-        >
-          ?
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          {isSupabaseConfigured() && (
+            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
+          )}
+          <button
+            type="button"
+            onClick={() => setHowToPlayOpen(true)}
+            aria-label="Cómo se juega"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          >
+            ?
+          </button>
+        </div>
       </div>
 
       {showPicker && (
@@ -385,6 +406,13 @@ export function Setup() {
       </Button>
 
       <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
+      <Profile
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        auth={auth}
+        signInWithGoogle={signInWithGoogle}
+        signOut={signOut}
+      />
     </main>
   );
 }
