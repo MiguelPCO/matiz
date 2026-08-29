@@ -10,6 +10,7 @@ import { scoreRound } from "../lib/engine";
 import { buildGrid } from "../lib/grid";
 import { createBrowserSupabaseClient } from "../lib/supabase";
 import { DIFFICULTY, MAX_GUESSES } from "../lib/types";
+import { persistHistory, readHistory, writeHistoryEntry } from "../lib/daily-storage";
 import { useSupabaseAuth } from "./useSupabaseAuth";
 import type { DailyHistory, DailyResult } from "../lib/daily";
 import type { DailyResultRow } from "../lib/daily-sync";
@@ -27,7 +28,6 @@ import type { GridSpec, HintKind, Round } from "../lib/types";
 
 const PLACEHOLDER_PLAYER_ID = "daily-player";
 const DAILY_STORAGE_KEY = "matiz-daily-v1";
-const DAILY_HISTORY_STORAGE_KEY = "matiz-daily-history-v1";
 const DAILY_WORD_STORAGE_KEY = "matiz-daily-word-v1";
 
 interface DailyStorage {
@@ -51,28 +51,6 @@ function readLegacyCache(dateKey: string): DailyResult | null {
   } catch {
     return null;
   }
-}
-
-function readHistory(): DailyHistory {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(DAILY_HISTORY_STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as DailyHistory;
-  } catch {
-    return {};
-  }
-}
-
-function persistHistory(history: DailyHistory): DailyHistory {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(DAILY_HISTORY_STORAGE_KEY, JSON.stringify(history));
-  }
-  return history;
-}
-
-function writeHistoryEntry(base: DailyHistory, dateKey: string, result: DailyResult): DailyHistory {
-  return persistHistory({ ...base, [dateKey]: result });
 }
 
 interface DailyWordStorage {
