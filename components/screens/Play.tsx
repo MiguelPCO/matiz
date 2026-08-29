@@ -146,7 +146,9 @@ export function Play() {
                 <p className="mt-1 font-sans text-lg text-text">{extraHint.word}</p>
               ) : extraHint.status === "loading" ? (
                 <p className="mt-1 font-sans text-sm text-text-muted">Buscando pista…</p>
-              ) : null}
+              ) : (
+                <p className="mt-1 font-sans text-sm text-text-muted">Sin pista disponible.</p>
+              )}
             </div>
           )}
         </>
