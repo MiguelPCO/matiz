@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGame } from "../../hooks/useGame";
+import { useSupabaseAuth } from "../../hooks/useSupabaseAuth";
+import { useTheme } from "../../hooks/useTheme";
 import { colorWord } from "../../lib/color-word";
+import { isSupabaseConfigured } from "../../lib/supabase";
 import { bestGuess, scoreBreakdown } from "../../lib/engine";
 import { buildGrid } from "../../lib/grid";
 import { DIFFICULTY, MAX_GUESSES } from "../../lib/types";
@@ -10,7 +13,9 @@ import type { HintKind } from "../../lib/types";
 import { ClueBar } from "../game/ClueBar";
 import { ColorCard } from "../game/ColorCard";
 import { HintRow } from "../game/HintRow";
+import { ProfileButton } from "../ui/ProfileButton";
 import { Reveal } from "../game/Reveal";
+import { Profile } from "./Profile";
 import { Thermometer } from "../game/Thermometer";
 
 /**
@@ -34,6 +39,9 @@ type ExtraHintState =
 export function Play() {
   const { state, dispatch } = useGame();
   const [confirmingExit, setConfirmingExit] = useState(false);
+  const [theme, toggleTheme] = useTheme();
+  const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [extraHint, setExtraHint] = useState<ExtraHintState>({ status: "idle" });
   const round = state.currentRound !== null ? state.rounds[state.currentRound] : null;
 
@@ -110,6 +118,19 @@ export function Play() {
             </button>
           </div>
         )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          {isSupabaseConfigured() && (
+            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
+          )}
+        </div>
       </div>
 
       {isPlaying ? (
@@ -165,6 +186,13 @@ export function Play() {
           onAction={() => dispatch({ type: "NEXT" })}
         />
       )}
+      <Profile
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        auth={auth}
+        signInWithGoogle={signInWithGoogle}
+        signOut={signOut}
+      />
     </div>
   );
 }
