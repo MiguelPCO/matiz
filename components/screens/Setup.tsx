@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGame } from "../../hooks/useGame";
 import { extractColor } from "../../lib/extract";
-import { randomWordColor } from "../../lib/random-word";
+import { pickSoloWord } from "../../lib/solo-words";
 import { DIFFICULTY } from "../../lib/types";
 import type { Clue, ClueType, Difficulty, GridSize, Hex } from "../../lib/types";
 import { wordToColor } from "../../lib/word-color";
@@ -28,8 +28,8 @@ import { HowToPlay } from "./HowToPlay";
  * para que la adivine tu rival (secreto solo hasta la Cortina, ver
  * Sprint 4) — en Solo la vas a adivinar tú mismo, así que si tú mismo la
  * escribieras ya sabrías la respuesta. Por eso Solo genera la pista al
- * azar (randomWordColor) en vez de pedirte que la escribas, y nunca
- * enseña el swatch antes de jugar.
+ * azar (pickSoloWord + wordToColor) en vez de pedirte que la escribas, y
+ * nunca enseña el swatch antes de jugar.
  */
 
 type ClueDraft =
@@ -62,10 +62,6 @@ const WORD_ERROR_COPY: Record<"network" | "invalid" | "timeout", string> = {
 
 const MAX_STORED_IMAGE_EDGE = 640;
 const LAST_SOLO_WORD_KEY = "matiz-last-solo-word";
-
-function normalizeWord(word: string): string {
-  return word.trim().toLowerCase();
-}
 
 function readLastSoloWord(): string | null {
   try {
@@ -124,20 +120,14 @@ export function Setup() {
   const generateRandomClue = useCallback(async () => {
     setDraft({ status: "loading" });
     const lastWord = readLastSoloWord();
-    let result = await randomWordColor(lastWord ?? undefined);
-    // best-effort de prompt (ver route) — si aun así repite la misma palabra
-    // que la partida anterior, un segundo intento sin exclusión adicional
-    // suele bastar (la aleatoriedad de temperature:1 rara vez repite dos
-    // veces seguidas); no reintenta en bucle para no alargar la espera.
-    if (result.ok && lastWord && normalizeWord(result.word) === normalizeWord(lastWord)) {
-      result = await randomWordColor(lastWord);
-    }
+    const word = pickSoloWord(lastWord ?? undefined);
+    const result = await wordToColor(word);
     if (!result.ok) {
       setDraft({ status: "error", reason: result.reason });
       return;
     }
-    writeLastSoloWord(result.word);
-    setDraft({ status: "ready", targetHex: result.hex, word: result.word });
+    writeLastSoloWord(word);
+    setDraft({ status: "ready", targetHex: result.hex, word });
   }, []);
 
   useEffect(() => {
