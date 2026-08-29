@@ -53,14 +53,13 @@ export async function POST(request: Request) {
       {
         model: "claude-opus-5",
         max_tokens: 16000,
-        // temperature 0 — a diferencia de random-word (que SÍ quiere variar
-        // entre llamadas), aquí todos los jugadores deben ver la misma
-        // palabra el mismo día para el mismo hex. Best-effort: la API no
-        // garantiza determinismo exacto ni con temperature 0, pero reduce
-        // la varianza frente al default. La caché de useDaily.ts (por
-        // dateKey, en localStorage) solo evita repetir la llamada en el
-        // mismo navegador — no sincroniza entre jugadores por sí sola.
-        temperature: 0,
+        // `temperature` no es un parámetro soportado en este modelo (la API
+        // devuelve 400 invalid_request_error si se envía) — no hay perilla
+        // de determinismo disponible aquí. Todos los jugadores viendo la
+        // misma palabra el mismo día para el mismo hex depende solo de la
+        // caché de useDaily.ts (por dateKey, en localStorage), que evita
+        // repetir la llamada en el mismo navegador — no sincroniza entre
+        // jugadores por sí sola.
         output_config: { effort: "low" },
         messages: [
           {
