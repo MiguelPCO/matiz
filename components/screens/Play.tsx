@@ -118,19 +118,21 @@ export function Play() {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
-          >
-            {theme === "dark" ? "☀" : "☾"}
-          </button>
-          {isSupabaseConfigured() && (
-            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
-          )}
-        </div>
+        {!confirmingExit && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+            >
+              {theme === "dark" ? "☀" : "☾"}
+            </button>
+            {isSupabaseConfigured() && (
+              <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
+            )}
+          </div>
+        )}
       </div>
 
       {isPlaying ? (

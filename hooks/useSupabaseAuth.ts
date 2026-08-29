@@ -63,10 +63,15 @@ export function useSupabaseAuth(): {
 
   const signInWithGoogle = useCallback(() => {
     if (!supabase) return;
+    // Round-trip la página de origen vía ?next= para que el callback pueda
+    // devolver al usuario donde estaba (Home/Setup/Play/Diario) en vez de
+    // aterrizar siempre en Diario — ver finding 1 de la revisión final de
+    // Profile screen (docs/superpowers/specs/2026-08-29-profile-screen-design.md).
+    const next = encodeURIComponent(window.location.pathname);
     supabase.auth
       .signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${next}` },
       })
       .then(() => {}, () => {});
   }, [supabase]);

@@ -110,9 +110,6 @@ export function Diario() {
           Diario · {state.dateKey}
         </span>
         <div className="flex items-center gap-2">
-          {isSupabaseConfigured() && (
-            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
-          )}
           <button
             type="button"
             onClick={toggleTheme}
@@ -121,6 +118,9 @@ export function Diario() {
           >
             {theme === "dark" ? "☀" : "☾"}
           </button>
+          {isSupabaseConfigured() && (
+            <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
+          )}
         </div>
       </div>
 
