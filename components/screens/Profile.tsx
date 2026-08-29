@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { localDateKey } from "../../lib/daily";
 import { readHistory } from "../../lib/daily-storage";
 import type { DailyHistory } from "../../lib/daily";
+import { isSupabaseConfigured } from "../../lib/supabase";
 import type { AuthState } from "../../hooks/useSupabaseAuth";
 import { DailyStats } from "../game/DailyStats";
 import { Button } from "../ui/Button";
@@ -73,8 +74,8 @@ export function Profile({ open, onClose, auth, signInWithGoogle, signOut }: Prof
       aria-label="Perfil"
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0/95 px-4 pt-10 pb-6"
     >
-      <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
-        <div className="flex items-center justify-between">
+      <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-6">
+        <div className="flex w-full items-center justify-between">
           <Label>Perfil</Label>
           <button
             ref={closeRef}
@@ -87,25 +88,27 @@ export function Profile({ open, onClose, auth, signInWithGoogle, signOut }: Prof
           </button>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-[var(--radius-panel)] bg-surface-1 p-4">
-          {auth.status === "signed-in" ? (
-            <>
-              <p className="font-sans text-sm text-text">{auth.email ?? "Sesión iniciada"}</p>
-              <Button variant="secondary" onClick={signOut}>
-                Cerrar sesión
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="font-sans text-sm text-text-muted">
-                Inicia sesión para guardar tus estadísticas de Diario en la nube.
-              </p>
-              <Button variant="secondary" onClick={signInWithGoogle} disabled={auth.status === "loading"}>
-                Iniciar sesión con Google
-              </Button>
-            </>
-          )}
-        </div>
+        {isSupabaseConfigured() && (
+          <div className="flex w-full flex-col gap-3 rounded-[var(--radius-panel)] bg-surface-1 p-4">
+            {auth.status === "signed-in" ? (
+              <>
+                <p className="font-sans text-sm text-text">{auth.email ?? "Sesión iniciada"}</p>
+                <Button variant="secondary" onClick={signOut}>
+                  Cerrar sesión
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-sans text-sm text-text-muted">
+                  Inicia sesión para guardar tus estadísticas de Diario en la nube.
+                </p>
+                <Button variant="secondary" onClick={signInWithGoogle} disabled={auth.status === "loading"}>
+                  Iniciar sesión con Google
+                </Button>
+              </>
+            )}
+          </div>
+        )}
 
         <DailyStats history={history} todayKey={localDateKey(new Date())} />
       </div>
