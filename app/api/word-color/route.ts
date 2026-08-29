@@ -41,9 +41,8 @@ export async function POST(request: Request) {
   try {
     const response = await client.messages.create(
       {
-        model: "claude-opus-5",
-        max_tokens: 16000,
-        output_config: { effort: "low" },
+        model: "claude-haiku-4-5",
+        max_tokens: 256,
         messages: [
           {
             role: "user",
