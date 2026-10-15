@@ -25,6 +25,7 @@ Fija las palabras (domain-modeling) y luego la forma: tipos y firmas antes del c
 Pasos pequeños test-first. Si dos arreglos fallan igual, ataca la premisa. Limpia el diff antes de revisar.
 
 - **Construir una pieza**: `/implement` (Matt) → `/tdd` (Matt) → `/typescript-best-practices` (pstack)
+- **Cambio pequeño de UI**: `/grill-with-docs` (Matt) → `/implement` (Matt) → `/create-verification-skill` (pstack)
 - **Construir el spec entero**: `/implement-spec` (Matt) → `/tdd` (Matt)
 - **Bug difícil**: `/diagnosing-bugs` (Matt) → `/principle-attack-the-premise` (pstack)
 - **Limpiar el diff**: `/deslop` (pstack) → `/no-comments` (pstack)
@@ -63,3 +64,11 @@ Ordena issues, aprende de cada sesión (retro, correct) y mantén al día el map
 
 Requiere `mattpocock-skills@mattpocock` v1.3.1 (marketplace propio de Matt; el oficial sigue en 1.2.3).
 Los principios `principle-*` son reglas: léelos cuando apliquen, no se "ejecutan".
+
+## Lecciones del piloto (retro 2026-10-16)
+
+- Cambio pequeño de UI: sáltate `/to-tickets` y `/tdd`; el skill verify en la app real aporta más.
+- `/to-spec` y `/to-tickets` publican en un issue tracker: corre `/setup-matt-pocock-skills` una vez, o guarda el spec en `docs/superpowers/specs/`.
+- `/code-review` + `/interrogate` lanzaron 6 agentes para ~30 líneas, pero solo uno cazó el bug real (Tab escapando del diálogo). Mantén varios modelos en `/interrogate`.
+- Los skills de Matt no salen en la lista del Skill tool: léelos de `~/.claude/plugins/cache/mattpocock/mattpocock-skills/1.3.1/skills/`.
+- `/correct` en MATIZ: un dueño (`lib/claude.ts`, `hooks/useDialog.ts`) + regla ESLint + CI `pnpm check`; tabla de reglas en `CLAUDE.md`.
