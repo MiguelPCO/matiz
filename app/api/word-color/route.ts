@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { allow, clientKey } from "../../../lib/rate-limit";
+import { CLAUDE_MODEL, claude } from "../../../lib/claude";
 
 /**
  * Palabra → hex vía Claude. Server-side: la API key nunca llega al cliente
@@ -7,18 +9,19 @@ import { NextResponse } from "next/server";
  * navegador sin auth, lo cual solo funcionaba porque nunca se desplegó).
  */
 
-const client = new Anthropic();
 const TIMEOUT_MS = 15_000;
 const MAX_WORD_LENGTH = 60;
 const HEX_PATTERN = /#([0-9a-fA-F]{6})/;
 
-type ErrorReason = "network" | "invalid" | "timeout";
+type ErrorReason = "network" | "invalid" | "timeout" | "rate_limited";
 
 function errorResponse(reason: ErrorReason, status: number) {
   return NextResponse.json({ error: reason }, { status });
 }
 
 export async function POST(request: Request) {
+  if (!allow(clientKey(request))) return errorResponse("rate_limited", 429);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -39,9 +42,9 @@ export async function POST(request: Request) {
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const response = await client.messages.create(
+    const response = await claude.messages.create(
       {
-        model: "claude-haiku-4-5",
+        model: CLAUDE_MODEL,
         max_tokens: 256,
         messages: [
           {

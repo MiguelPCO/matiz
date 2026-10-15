@@ -45,3 +45,6 @@ next-env.d.ts
 .worktrees/
 
 .vercel
+
+# verification runs (.claude/skills/verify)
+/.verify/

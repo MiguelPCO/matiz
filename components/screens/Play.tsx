@@ -15,6 +15,7 @@ import { ColorCard } from "../game/ColorCard";
 import { HintRow } from "../game/HintRow";
 import { ProfileButton } from "../ui/ProfileButton";
 import { Reveal } from "../game/Reveal";
+import { HowToPlay } from "./HowToPlay";
 import { Profile } from "./Profile";
 import { Thermometer } from "../game/Thermometer";
 
@@ -42,6 +43,7 @@ export function Play() {
   const [theme, toggleTheme] = useTheme();
   const { auth, signInWithGoogle, signOut } = useSupabaseAuth();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [extraHint, setExtraHint] = useState<ExtraHintState>({ status: "idle" });
   const round = state.currentRound !== null ? state.rounds[state.currentRound] : null;
 
@@ -131,6 +133,14 @@ export function Play() {
             {isSupabaseConfigured() && (
               <ProfileButton signedIn={auth.status === "signed-in"} onClick={() => setProfileOpen(true)} />
             )}
+            <button
+              type="button"
+              onClick={() => setHowToPlayOpen(true)}
+              aria-label="Cómo se juega"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+            >
+              ?
+            </button>
           </div>
         )}
       </div>
@@ -190,6 +200,7 @@ export function Play() {
           onAction={() => dispatch({ type: "NEXT" })}
         />
       )}
+      <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
       <Profile
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
