@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { allow, clientKey } from "../../../lib/rate-limit";
 
 /**
  * Palabra → hex vía Claude. Server-side: la API key nunca llega al cliente
@@ -12,13 +13,15 @@ const TIMEOUT_MS = 15_000;
 const MAX_WORD_LENGTH = 60;
 const HEX_PATTERN = /#([0-9a-fA-F]{6})/;
 
-type ErrorReason = "network" | "invalid" | "timeout";
+type ErrorReason = "network" | "invalid" | "timeout" | "rate_limited";
 
 function errorResponse(reason: ErrorReason, status: number) {
   return NextResponse.json({ error: reason }, { status });
 }
 
 export async function POST(request: Request) {
+  if (!allow(clientKey(request))) return errorResponse("rate_limited", 429);
+
   let body: unknown;
   try {
     body = await request.json();
