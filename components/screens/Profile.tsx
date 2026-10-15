@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { localDateKey } from "../../lib/daily";
 import { readHistory } from "../../lib/daily-storage";
 import type { DailyHistory } from "../../lib/daily";
@@ -28,42 +29,12 @@ interface ProfileProps {
  * fuera de alcance (esos modos no persisten nada todavía).
  */
 export function Profile({ open, onClose, auth, signInWithGoogle, signOut }: ProfileProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const { dialogRef, closeRef } = useDialog(open, onClose);
   const [history, setHistory] = useState<DailyHistory>({});
 
   useEffect(() => {
     if (open) setHistory(readHistory());
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open) return null;
 
