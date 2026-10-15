@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { allow, clientKey } from "../../../lib/rate-limit";
+import { CLAUDE_MODEL, claude } from "../../../lib/claude";
 
 /**
  * hex → palabra, la dirección inversa de app/api/word-color/route.ts —
@@ -13,7 +14,6 @@ import { allow, clientKey } from "../../../lib/rate-limit";
  * pista original.
  */
 
-const client = new Anthropic();
 const TIMEOUT_MS = 15_000;
 const HEX_INPUT_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const WORD_PATTERN = /^[a-záéíóúñü ]+$/;
@@ -68,9 +68,9 @@ export async function POST(request: Request) {
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const response = await client.messages.create(
+    const response = await claude.messages.create(
       {
-        model: "claude-haiku-4-5",
+        model: CLAUDE_MODEL,
         max_tokens: 256,
         // Sin perilla de determinismo en este modelo/tarea — todos los
         // jugadores viendo la misma palabra el mismo día para el mismo hex
