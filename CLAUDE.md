@@ -96,3 +96,7 @@ Cuatro/cinco pruebas cuyo fallo silencioso arruinaría la partida — no negocia
 Orden secuencial estricto por dependencia: **S0** Fundación (setup, tokens OKLCH, `lib/color.ts`/`grid.ts`) → **S1** Bucle jugable (engine, UI de carta, solo) → **S2** Pantallas/navegación → **S3** Reveal (coreografía GSAP) → **S4** Duelo hotseat (mayor riesgo: estado multijugador nuevo) → **S5** Pulido/lanzamiento.
 
 Puntos de corte válidos si falta tiempo: tras S2 (solitario publicable), tras S3 (recomendado — solitario con carácter, sirve como portfolio), tras S4 (MVP completo).
+
+## Skills (piloto Matt + pstack)
+
+Antes de una tarea no trivial, lee `SKILLMAP.md`: dice qué skill usar en cada fase (Plan → Maintain + Anytime). Los skills de pstack están en `.claude/skills/`; los de Matt vienen del plugin `mattpocock-skills`.
