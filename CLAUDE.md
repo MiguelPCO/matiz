@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado del repo
 
-**Fase de definición, sin scaffold todavía.** No hay `package.json` ni código de aplicación — solo documentación de producto/arquitectura y un prototipo de referencia (`croma.jsx`). El siguiente paso planificado es Sprint 0 (ver `MATIZ-SPRINTS.md`): `create-next-app` con Next.js 15, React 19, TypeScript strict, Tailwind v4.
+Sprints 0–4 y 6 (Diario) hechos; Sprint 5 (pulido) en curso — el estado de cada tarea está en `MATIZ-SPRINTS.md`. Desde el MVP se añadieron: rutas `/diario`, `/privacidad`, `/aviso-legal`, `/auth`; rutas Claude en `app/api/*` (vía `lib/claude.ts`); cuenta Google opcional con Supabase (solo sincroniza Diario).
 
 ## Arranque en frío (cada sesión)
 
@@ -20,18 +20,18 @@ Sigue este orden de lectura — está definido en `START.md`:
 
 No empieces una tarea de un sprint si el anterior no está en verde — el orden en `MATIZ-SPRINTS.md` es por dependencia, no por preferencia.
 
-## Comandos (una vez exista el scaffold de Sprint 0)
+## Comandos
 
 ```bash
-pnpm dev            # desarrollo
+pnpm check          # typecheck + lint + test — lo mismo que corre CI en cada PR
 pnpm build          # build de producción
-pnpm test           # los 5 tests obligatorios del SCHEMA §11
-pnpm tsc --noEmit   # comprobación de tipos — debe salir limpio siempre, cero any
 ```
+
+Dev server en :4000 y verificación en navegador: skill `verify` (`.claude/skills/verify/`).
 
 ## Arquitectura (de `MATIZ-SCHEMA.md`)
 
-**Qué es:** MATIZ — juego de percepción cromática. Pista (palabra vía IA, o foto desaturada) → el jugador localiza el color exacto en una carta N×N de tonalidades del mismo tono (OKLCH, H fijo). Feedback por termómetro de proximidad (ΔE en OKLab), nunca dirección. Modos: Solo y Duelo hotseat, sin cuentas ni backend.
+**Qué es:** MATIZ — juego de percepción cromática. Pista (palabra vía IA, o foto desaturada) → el jugador localiza el color exacto en una carta N×N de tonalidades del mismo tono (OKLCH, H fijo). Feedback por termómetro de proximidad (ΔE en OKLab), nunca dirección. Modos: Solo y Duelo hotseat (sin cuentas), y Diario (cuenta opcional).
 
 **Principio de arquitectura — "hotseat ahora, online sin reescritura":**
 
@@ -49,7 +49,7 @@ pnpm tsc --noEmit   # comprobación de tipos — debe salir limpio siempre, cero
 - `lib/word-color.ts` — red: palabra → color vía IA, nunca lanza excepción, devuelve resultado tipado (`ok`/`reason`) + caché
 - `lib/gsap.ts` — registro único de plugins GSAP + helper `prefersReducedMotion`
 
-**Estructura de directorios objetivo** (post Sprint 0): `app/` (una sola ruta — el juego es modal, la fase vive en el estado, no en la URL), `components/screens/` (S0–S6), `components/game/`, `components/ui/`, `lib/`, `hooks/`, `tokens/theme.css`.
+**Estructura de directorios objetivo** (post Sprint 0): `app/` (Solo/Duelo en una sola ruta — el juego es modal, la fase vive en el estado, no en la URL), `components/screens/` (S0–S6), `components/game/`, `components/ui/`, `lib/`, `hooks/`, `tokens/theme.css`.
 
 **Máquina de fases** (`GameState.phase`, ver SCHEMA §7):
 ```
@@ -100,3 +100,13 @@ Puntos de corte válidos si falta tiempo: tras S2 (solitario publicable), tras S
 ## Skills (piloto Matt + pstack)
 
 Antes de una tarea no trivial, lee `SKILLMAP.md`: dice qué skill usar en cada fase (Plan → Maintain + Anytime). Los skills de pstack están en `.claude/skills/`; los de Matt vienen del plugin `mattpocock-skills`.
+
+## Reglas y quién las hace cumplir
+
+| Regla | La hace cumplir |
+|---|---|
+| Cliente y modelo Claude solo desde `lib/claude.ts`; nada de `temperature` | ESLint `no-restricted-syntax` en `app/**` |
+| Teclado de overlays modales (foco, Escape, Tab, volver al opener) | `hooks/useDialog.ts` — único dueño |
+| typecheck, lint y tests en verde antes de mergear | `pnpm check` en `.github/workflows/check.yml` |
+| Cero `any`, `noUncheckedIndexedAccess` | `tsconfig.json` + `pnpm typecheck` |
+| Sin verde-éxito / rojo-error en la UI | nada (juicio de review) |
