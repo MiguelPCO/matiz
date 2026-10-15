@@ -15,17 +15,29 @@ interface HowToPlayProps {
 export function HowToPlay({ open, onClose }: HowToPlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  // onClose llega como arrow inline: en ref para que re-renders del padre
+  // (p. ej. la pista extra de Play) no re-ejecuten el efecto ni roben el foco.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !dialogRef.current) return;
+      // Foco fuera del diálogo (clic en el texto lo deja en body): devolverlo,
+      // o el Tab llegaría a la carta de detrás y podría disparar un tiro.
+      if (!dialogRef.current.contains(document.activeElement)) {
+        e.preventDefault();
+        closeRef.current?.focus();
+        return;
+      }
       const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
@@ -42,8 +54,11 @@ export function HowToPlay({ open, onClose }: HowToPlayProps) {
       }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      opener?.focus();
+    };
+  }, [open]);
 
   if (!open) return null;
 
