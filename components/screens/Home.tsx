@@ -43,7 +43,7 @@ export function Home() {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-10 px-4">
+    <main className="relative mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-10 px-4 py-16">
       <div className="absolute top-6 right-6 flex items-center gap-2">
         <button
           type="button"
@@ -124,6 +124,10 @@ export function Home() {
           </Link>
         </div>
       )}
+
+      <p className="absolute bottom-6 font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
+        <Link href="/privacidad">Privacidad</Link> · <Link href="/aviso-legal">Aviso legal</Link>
+      </p>
 
       <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
       <Profile

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { localDateKey } from "../../lib/daily";
 import { readHistory } from "../../lib/daily-storage";
@@ -105,6 +106,11 @@ export function Profile({ open, onClose, auth, signInWithGoogle, signOut }: Prof
                 <Button variant="secondary" onClick={signInWithGoogle} disabled={auth.status === "loading"}>
                   Iniciar sesión con Google
                 </Button>
+                <p className="font-sans text-xs text-text-muted">
+                  Al crear una cuenta aceptas la{" "}
+                  <Link href="/privacidad" className="underline">política de privacidad</Link> y el{" "}
+                  <Link href="/aviso-legal" className="underline">aviso legal</Link>.
+                </p>
               </>
             )}
           </div>
