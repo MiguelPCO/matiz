@@ -164,7 +164,7 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 - [ ] Recorrido completo por teclado
 - [ ] Rendimiento: LCP < 2,5 s, CLS < 0,1, interacción < 100 ms
 - [ ] Prueba en móvil real (no solo DevTools) — iOS y Android
-- [ ] Declaración honesta sobre daltonismo en S6
+- [x] Declaración honesta sobre daltonismo en S6 (alcanzable también desde Play y Diario)
 - [ ] Vercel Analytics + Web Vitals
 - [ ] Dominio propio + OG image
 - [ ] README con las decisiones técnicas (materia prima del caso de portfolio)
