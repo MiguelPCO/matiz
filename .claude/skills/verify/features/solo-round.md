@@ -41,3 +41,5 @@ Preconditions:
 - Score counts up with an animation; text read right at reveal shows `0`. Wait, then read.
 - Penalty: `−15` per hint, `−8` per guess after the first. A hint that did not register shows up as a missing `−15`.
 - Each round costs one Claude call; the clue routes rate-limit at 20/min per IP.
+- Touch targets: every control has a ≥ 44 px hit area (`hit-44` utility in `app/globals.css`; swatches extend 2 px into the gap). Check edges with `document.elementFromPoint` on a cell's inner border: it must return that cell, never its neighbour.
+- Reduced motion: `bash $V ab set media light reduced-motion` before `open`; the reveal must show verdict, score and breakdown with no animation. Reset with `bash $V ab set media light`.
