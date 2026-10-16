@@ -164,7 +164,7 @@ export function Reveal({
   );
 
   return (
-    <div ref={containerRef} className="relative flex w-full max-w-xs flex-col items-center gap-6">
+    <div ref={containerRef} className="relative flex w-full max-w-xs flex-col items-center gap-4">
       {clue && (clue.type === "word" ? (
         <div className="flex w-full items-center gap-3 rounded-[var(--radius-panel)] bg-surface-1 p-3">
           <div className="flex-1">
@@ -206,7 +206,13 @@ export function Reveal({
 
       {/* Solo el gradiente de color queda oscuro siempre (PRD §5.2); el
           resto de la pantalla sigue el tema claro/oscuro normal. */}
-      <div data-theme="dark" className="w-full rounded-[var(--radius-frame)] bg-surface-0 p-3">
+      {/* La carta encoge en pantallas bajas para que pista, puntos y botón quepan sin scroll
+          (~380px es el resto de la pantalla de reveal). */}
+      <div
+        data-theme="dark"
+        className="mx-auto w-full rounded-[var(--radius-frame)] bg-surface-0 p-3"
+        style={{ maxWidth: "clamp(220px, calc(100dvh - 380px), 100%)" }}
+      >
         <ColorCard grid={grid} guesses={guesses} disabled revealTarget onTap={() => {}} />
       </div>
 
@@ -216,9 +222,11 @@ export function Reveal({
       />
 
       <div className="text-center">
-        <p className="font-sans text-lg text-text">{verdict}</p>
-        <p className="mt-1 font-mono text-3xl font-bold text-signal">
-          <span ref={scoreRef}>{score}</span>
+        <p className="flex items-baseline justify-center gap-3">
+          <span className="font-sans text-lg text-text">{verdict}</span>
+          <span ref={scoreRef} className="font-mono text-3xl font-bold text-signal">
+            {score}
+          </span>
         </p>
         {breakdown.penalty > 0 && (
           <p className="mt-0.5 font-mono text-xs text-text-faint">
@@ -227,7 +235,8 @@ export function Reveal({
         )}
       </div>
 
-      <div data-action-panel className="w-full">
+      {/* sticky: en pantallas bajas el botón sigue a la vista sin hacer scroll. */}
+      <div data-action-panel className="sticky bottom-4 w-full">
         <button
           type="button"
           onClick={onAction}

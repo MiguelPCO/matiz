@@ -163,7 +163,7 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 - [x] Objetivos táctiles ≥ 44 px; área extendida en 8×8
 - [x] Recorrido completo por teclado
 - [x] Rendimiento: LCP < 2,5 s, CLS < 0,1, interacción < 100 ms
-- [ ] Prueba en móvil real (no solo DevTools) — iOS y Android
+- [x] Prueba en móvil real (no solo DevTools) — iOS y Android
 - [x] Declaración honesta sobre daltonismo en S6 (alcanzable también desde Play y Diario)
 - [x] Vercel Analytics + Web Vitals
 - [x] Dominio propio + OG image — sin dominio propio por decisión de Miguel (se queda `matiz-eight.vercel.app`); OG en `app/opengraph-image.tsx`
@@ -174,7 +174,7 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 - Los seis puntos de la Definición de Terminado del PRD §10
 - Core Web Vitals en verde sobre dispositivo real
 
-**Estado (2026-10-16):** todo verificado en navegador real salvo la prueba en móvil físico, que solo puede hacer Miguel (iOS y Android: jugar Solo 8×8, un Duelo con cortina y un Diario; mirar Speed Insights tras unos días de tráfico). Producción en escritorio: LCP 0,8 s, CLS 0 (Home) / 0,06 (Diario), interacciones < 16 ms. Arreglado de paso: en 8×8 el área táctil extendida de cada casilla solapaba a la vecina y tocar su borde derecho o inferior registraba la casilla de al lado.
+**Estado (2026-10-16):** cerrado. Miguel lo probó en móvil real; sus cambios (icono de perfil, estadísticas que no desbordan, reveal sin scroll, textos de «Cómo se juega») se aplicaron después de su prueba. Producción en escritorio: LCP 0,8 s, CLS 0 (Home) / 0,06 (Diario), interacciones < 16 ms. Speed Insights (datos de campo) es de plan Pro y no está disponible. Arreglado de paso: en 8×8 el área táctil extendida de cada casilla solapaba a la vecina.
 
 ---
 

@@ -116,23 +116,18 @@ export function DailyStats({ history, todayKey }: DailyStatsProps) {
 
   return (
     <div className="flex w-full max-w-xs flex-col gap-4">
-      <div className="grid grid-cols-4 gap-2">
-        <div className="rounded-[var(--radius-panel)] bg-surface-1 p-2 text-center">
-          <p className="font-mono text-xl font-bold text-text">{stats.currentStreak}</p>
-          <Label className="mt-0.5 block">Racha</Label>
-        </div>
-        <div className="rounded-[var(--radius-panel)] bg-surface-1 p-2 text-center">
-          <p className="font-mono text-xl font-bold text-text">{stats.bestStreak}</p>
-          <Label className="mt-0.5 block">Mejor</Label>
-        </div>
-        <div className="rounded-[var(--radius-panel)] bg-surface-1 p-2 text-center">
-          <p className="font-mono text-xl font-bold text-text">{stats.winPercent}%</p>
-          <Label className="mt-0.5 block">Victorias</Label>
-        </div>
-        <div className="rounded-[var(--radius-panel)] bg-surface-1 p-2 text-center">
-          <p className="font-mono text-xl font-bold text-text">{stats.gamesPlayed}</p>
-          <Label className="mt-0.5 block">Partidas</Label>
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          [String(stats.currentStreak), "Racha"],
+          [String(stats.bestStreak), "Mejor racha"],
+          [`${stats.winPercent}%`, "Victorias"],
+          [String(stats.gamesPlayed), "Partidas"],
+        ].map(([value, label]) => (
+          <div key={label} className="rounded-[var(--radius-panel)] bg-surface-1 px-2 py-3 text-center">
+            <p className="font-mono text-xl font-bold text-text">{value}</p>
+            <Label className="mt-0.5 block whitespace-nowrap">{label}</Label>
+          </div>
+        ))}
       </div>
 
       <div className="rounded-[var(--radius-panel)] bg-surface-1 p-3">

@@ -43,3 +43,6 @@ Preconditions:
 - Each round costs one Claude call; the clue routes rate-limit at 20/min per IP.
 - Touch targets: every control has a ≥ 44 px hit area (`hit-44` utility in `app/globals.css`; swatches extend 2 px into the gap). Check edges with `document.elementFromPoint` on a cell's inner border: it must return that cell, never its neighbour.
 - Reduced motion: `bash $V ab set media light reduced-motion` before `open`; the reveal must show verdict, score and breakdown with no animation. Reset with `bash $V ab set media light`.
+
+- Solo `Empezar` stays inert for a moment while the clue word loads: click it, check `[data-row]` exists, retry every 2 s. Chaining `wait --text` right after a dead click times the harness out (os error 10060).
+- Reveal fits without scroll down to 375×553 (card shrinks with viewport height); check `document.documentElement.scrollHeight === innerHeight`.
