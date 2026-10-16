@@ -97,7 +97,7 @@ export function Play() {
             type="button"
             onClick={() => setConfirmingExit(true)}
             aria-label="Volver"
-            className="font-mono text-lg text-text-muted"
+            className="hit-44 font-mono text-lg text-text-muted"
           >
             ←
           </button>
@@ -126,7 +126,7 @@ export function Play() {
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+              className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
             >
               {theme === "dark" ? "☀" : "☾"}
             </button>
@@ -137,7 +137,7 @@ export function Play() {
               type="button"
               onClick={() => setHowToPlayOpen(true)}
               aria-label="Cómo se juega"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+              className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
             >
               ?
             </button>

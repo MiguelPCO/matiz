@@ -31,7 +31,7 @@ export function Segmented<T extends string | number>({
           aria-checked={opt.value === value}
           onClick={() => onChange(opt.value)}
           disabled={disabled || opt.disabled}
-          className={`flex-1 rounded-[var(--radius-panel)] border border-line py-1.5 font-mono text-xs capitalize disabled:opacity-40 ${
+          className={`hit-44 flex-1 rounded-[var(--radius-panel)] border border-line py-1.5 font-mono text-xs capitalize disabled:opacity-40 ${
             opt.value === value ? "bg-signal text-signal-ink" : "text-text-muted"
           }`}
         >

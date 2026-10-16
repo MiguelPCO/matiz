@@ -10,7 +10,7 @@ const p = "font-sans text-sm text-text-muted";
 export default function AvisoLegalPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col gap-3 px-4 pt-10 pb-12">
-      <Link href="/" className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
+      <Link href="/" className="hit-44 self-start font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
         ← MATIZ
       </Link>
       <h1 className="mt-4 font-sans text-2xl text-text">Aviso legal</h1>

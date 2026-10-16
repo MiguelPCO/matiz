@@ -105,7 +105,7 @@ export function Diario() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center gap-6 bg-surface-0 px-4 pt-10 pb-6">
       <div className="flex w-full max-w-xs items-center justify-between">
-        <Link href="/" aria-label="Volver" className="font-mono text-lg text-text-muted">
+        <Link href="/" aria-label="Volver" className="hit-44 font-mono text-lg text-text-muted">
           ←
         </Link>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
@@ -116,7 +116,7 @@ export function Diario() {
             type="button"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+            className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
           >
             {theme === "dark" ? "☀" : "☾"}
           </button>
@@ -127,7 +127,7 @@ export function Diario() {
             type="button"
             onClick={() => setHowToPlayOpen(true)}
             aria-label="Cómo se juega"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+            className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
           >
             ?
           </button>
