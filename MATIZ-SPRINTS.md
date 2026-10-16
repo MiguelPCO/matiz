@@ -134,15 +134,15 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 
 ### Tareas
 
-- [ ] Extender el reducer: `START_DUEL`, `UNLOCK_CURTAIN`, `NEXT`, `REMATCH`
-- [ ] Rotación de turnos por `playerId` (nunca por índice hardcodeado)
-- [ ] S1 en modo duelo: «define la pista **para** el rival»
-- [ ] S2 Cortina — corte a negro seco, identidad grande, sin contenido de juego
-- [ ] `components/ui/HoldToConfirm` — mantener pulsado 1,2 s con anillo de progreso
-- [ ] S5 Marcador — comparativa, desglose de pistas, desempate visible
-- [ ] Lógica de desempate: puntos → pistas → tiros → ΔE
-- [ ] Nombres editables con defaults J1/J2
-- [ ] «Revancha» conserva jugadores y ajustes, invierte quién empieza
+- [x] Extender el reducer: `START_DUEL`, `UNLOCK_CURTAIN`, `NEXT`, `REMATCH`
+- [x] Rotación de turnos por `playerId` (nunca por índice hardcodeado)
+- [x] S1 en modo duelo: «define la pista **para** el rival»
+- [x] S2 Cortina — corte a negro seco, identidad grande, sin contenido de juego
+- [x] `components/ui/HoldToConfirm` — mantener pulsado 1,2 s con anillo de progreso
+- [x] S5 Marcador — comparativa, desglose de pistas, desempate visible
+- [x] Lógica de desempate: puntos → pistas → tiros → ΔE
+- [x] Nombres editables con defaults J1/J2
+- [x] «Revancha» conserva jugadores y ajustes, invierte quién empieza
 
 ### Aceptación
 
@@ -159,20 +159,22 @@ El orden no es arbitrario. Tres reglas lo gobiernan:
 
 ### Tareas
 
-- [ ] Accesibilidad: `aria-label` por swatch, foco visible en ámbar sobre cualquier fondo
-- [ ] Objetivos táctiles ≥ 44 px; área extendida en 8×8
-- [ ] Recorrido completo por teclado
-- [ ] Rendimiento: LCP < 2,5 s, CLS < 0,1, interacción < 100 ms
+- [x] Accesibilidad: `aria-label` por swatch, foco visible en ámbar sobre cualquier fondo
+- [x] Objetivos táctiles ≥ 44 px; área extendida en 8×8
+- [x] Recorrido completo por teclado
+- [x] Rendimiento: LCP < 2,5 s, CLS < 0,1, interacción < 100 ms
 - [ ] Prueba en móvil real (no solo DevTools) — iOS y Android
 - [x] Declaración honesta sobre daltonismo en S6 (alcanzable también desde Play y Diario)
-- [ ] Vercel Analytics + Web Vitals
-- [ ] Dominio propio + OG image
-- [ ] README con las decisiones técnicas (materia prima del caso de portfolio)
+- [x] Vercel Analytics + Web Vitals
+- [x] Dominio propio + OG image — sin dominio propio por decisión de Miguel (se queda `matiz-eight.vercel.app`); OG en `app/opengraph-image.tsx`
+- [x] README con las decisiones técnicas (materia prima del caso de portfolio)
 
 ### Aceptación
 
 - Los seis puntos de la Definición de Terminado del PRD §10
 - Core Web Vitals en verde sobre dispositivo real
+
+**Estado (2026-10-16):** todo verificado en navegador real salvo la prueba en móvil físico, que solo puede hacer Miguel (iOS y Android: jugar Solo 8×8, un Duelo con cortina y un Diario; mirar Speed Insights tras unos días de tráfico). Producción en escritorio: LCP 0,8 s, CLS 0 (Home) / 0,06 (Diario), interacciones < 16 ms. Arreglado de paso: en 8×8 el área táctil extendida de cada casilla solapaba a la vecina y tocar su borde derecho o inferior registraba la casilla de al lado.
 
 ---
 
