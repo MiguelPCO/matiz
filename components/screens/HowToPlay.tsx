@@ -43,34 +43,34 @@ export function HowToPlay({ open, onClose }: HowToPlayProps) {
           <div>
             <p className="font-sans text-lg text-text">Lee los ejes.</p>
             <p className="mt-1 font-sans text-sm text-text-muted">
-              La carta rotula sus ejes siempre: horizontal es luminosidad (oscuro → claro),
-              vertical es intensidad de color (vivo → apagado). No hay truco que aprender, solo
-              hay que mirar.
+              La carta tiene sus ejes siempre rotulados. En horizontal va la luminosidad, de oscuro
+              a claro, y en vertical la intensidad del color, de vivo a apagado. Con mirarlos ya
+              sabes hacia dónde moverte.
             </p>
           </div>
 
           <div>
             <p className="font-sans text-lg text-text">El termómetro dice cuánto, no dónde.</p>
             <p className="mt-1 font-sans text-sm text-text-muted">
-              Tras cada tiro, la barra indica qué tan cerca estás del matiz exacto — nunca en qué
-              dirección. Encontrarlo es cosa tuya.
+              Después de cada tiro, la barra marca lo cerca que estás del matiz exacto, pero no
+              hacia qué lado queda. Eso lo tienes que descubrir tú.
             </p>
           </div>
 
           <div>
             <p className="font-sans text-lg text-text">Tienes 3 tiros.</p>
             <p className="mt-1 font-sans text-sm text-text-muted">
-              Pide pistas si te hacen falta — cada una resta puntos. Tú decides si te compensa.
+              Puedes pedir pistas cuando te atasques. Cada una resta puntos, así que piensa si te
+              compensa.
             </p>
           </div>
 
           <div>
             <p className="font-sans text-lg text-text">Sobre el daltonismo.</p>
             <p className="mt-1 font-sans text-sm text-text-muted">
-              MATIZ es un juego de discriminación cromática — por naturaleza, no es accesible para
-              daltonismo severo. El eje horizontal de la carta (luminosidad) sigue siendo legible
-              sin percibir color, y eso ayuda, pero no lo resuelve. Preferimos decirlo claro a
-              fingir que no es un problema.
+              En MATIZ hay que distinguir colores muy parecidos, así que con daltonismo severo es
+              muy difícil de jugar. El eje horizontal (la luminosidad) se lee sin percibir el
+              color y ayuda algo, pero no basta. Preferimos avisarlo desde el principio.
             </p>
           </div>
         </div>
