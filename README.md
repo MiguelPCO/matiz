@@ -28,7 +28,7 @@ En **Diario**, la fecha local genera la carta y la pista del día; el resultado 
 | Color | Motor propio en espacio OKLCH (`lib/color.ts`) — sin dependencias |
 | IA | Anthropic API (Claude Haiku 4.5) — palabra → color y color → palabra |
 | Cuentas | Supabase (Google OAuth, opcional, solo sincroniza Diario) |
-| Métricas | Vercel Analytics + Speed Insights |
+| Métricas | Vercel Analytics |
 | Tests | Vitest |
 | Paquetes | pnpm |
 
@@ -114,7 +114,7 @@ Desarrollo por sprints — ver [`MATIZ-SPRINTS.md`](./MATIZ-SPRINTS.md) para el 
 - [x] **Sprint 2** — Pantallas y navegación completas (Home, Setup, Cómo se juega)
 - [x] **Sprint 3** — Coreografía de reveal con GSAP
 - [x] **Sprint 4** — Duelo hotseat
-- [x] **Sprint 5** — Accesibilidad, rendimiento y pulido de lanzamiento (falta la prueba en móvil real)
+- [x] **Sprint 5** — Accesibilidad, rendimiento y pulido de lanzamiento
 - [x] **Sprint 6** — Modo Diario
 
 ## Rendimiento
