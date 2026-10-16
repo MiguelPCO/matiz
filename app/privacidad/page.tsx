@@ -58,7 +58,7 @@ export default function PrivacidadPage() {
       <h2 className={h2}>4. Con quién se comparten</h2>
       <p className={p}>No vendemos tus datos. Los tratan, por cuenta nuestra, estos proveedores:</p>
       <ul className={`${p} list-disc pl-5`}>
-        <li>Supabase — base de datos y cuentas — región del proyecto: [RELLENAR].</li>
+        <li>Supabase — base de datos y cuentas — región del proyecto: Ireland.</li>
         <li>Vercel — alojamiento y estadísticas de uso sin cookies — Estados Unidos.</li>
         <li>Anthropic — IA que relaciona palabras y colores — Estados Unidos.</li>
         <li>Google — inicio de sesión — Estados Unidos.</li>
