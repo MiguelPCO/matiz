@@ -33,7 +33,7 @@ export function HowToPlay({ open, onClose }: HowToPlayProps) {
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="font-mono text-lg text-text-muted"
+            className="hit-44 font-mono text-lg text-text-muted"
           >
             ✕
           </button>

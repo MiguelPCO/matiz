@@ -49,7 +49,7 @@ export function Home() {
           type="button"
           onClick={toggleTheme}
           aria-label={theme === "dark" ? "Activar tema claro" : "Activar tema oscuro"}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
         >
           {theme === "dark" ? "☀" : "☾"}
         </button>
@@ -60,7 +60,7 @@ export function Home() {
           type="button"
           onClick={() => setHowToPlayOpen(true)}
           aria-label="Cómo se juega"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
+          className="hit-44 flex h-9 w-9 items-center justify-center rounded-full border border-line font-mono text-base text-text-muted"
         >
           ?
         </button>
@@ -126,7 +126,8 @@ export function Home() {
       )}
 
       <p className="absolute bottom-6 font-mono text-[10px] uppercase tracking-[0.25em] text-text-faint">
-        <Link href="/privacidad">Privacidad</Link> · <Link href="/aviso-legal">Aviso legal</Link>
+        <Link href="/privacidad" className="hit-44 inline-block">Privacidad</Link> ·{" "}
+        <Link href="/aviso-legal" className="hit-44 inline-block">Aviso legal</Link>
       </p>
 
       <HowToPlay open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />

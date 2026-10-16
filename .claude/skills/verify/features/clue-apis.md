@@ -30,3 +30,4 @@ Preconditions:
 - Every success costs a Claude Haiku call. Do not loop to test the rate limit against the real key; `lib/rate-limit.test.ts` covers the counter, and a live 429 check needs 21 calls.
 - The limiter is in-process memory: restarting the dev server resets it.
 - On Windows Git Bash, non-ASCII in `-d` is sent as UTF-8; if the route returns `invalid` for `óxido`, retry with an ASCII word to separate encoding from route bugs.
+- Failure path without breaking the key: `bash $V ab network route "http://localhost:4000/api/word-color" --abort` (a `**/api/...` glob does not match), click `Revelar color`, expect `No se pudo contactar con el servicio de color.` plus `Reintentar` and `Probar con una imagen`. `bash $V ab network unroute` after.

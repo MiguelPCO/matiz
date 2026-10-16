@@ -54,7 +54,7 @@ export function Profile({ open, onClose, auth, signInWithGoogle, signOut }: Prof
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="font-mono text-lg text-text-muted"
+            className="hit-44 font-mono text-lg text-text-muted"
           >
             ✕
           </button>
